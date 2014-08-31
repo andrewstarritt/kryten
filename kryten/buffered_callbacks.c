@@ -1,12 +1,12 @@
-/* $File: //depot/sw/c/buffered_callbacks.c $
- * $Revision: #3 $
- * $DateTime: 2012/07/15 21:09:01 $
+/* $File: //depot/sw/epics/common/buffered_callbacks.c $
+ * $Revision: #1 $
+ * $DateTime: 2014/05/11 10:47:28 $
  * Last checked in by: $Author: andrew $
  *
  * EPICS buffered callback module for use with Ada, Lazarus and other
  * runtime environments which don't like alien threads.
  *
- * Copyright (C) 2005-2012  Andrew C. Starritt
+ * Copyright (C) 2005-2013  Andrew C. Starritt
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@
  * code to do anything significant if running within an alien thread.
  *
  * Source code formatting:
- *    indent -kr -pcs -i3 -cli3 -nut
+ *    indent -kr -pcs -i3 -cli3 -nbbo -nut
  *
  */
 
@@ -60,8 +60,7 @@
  * Note: unlike the equivelent raw channel access callback functions,
  *       these functions always take POINTER arguments.
  */
-extern void application_connection_handler (struct connection_handler_args
-                                            *ptr);
+extern void application_connection_handler (struct connection_handler_args *ptr);
 
 extern void application_event_handler (struct event_handler_args *ptr);
 
@@ -79,7 +78,7 @@ typedef enum Callback_Kinds {
    NULL_KIND,
    CONNECTION,
    EVENT,
-   PRINTF,
+   PRINTF
 } Callback_Kinds;
 
 
@@ -163,7 +162,6 @@ static void free_element (Callback_Items * pci)
 
 
 /*------------------------------------------------------------------------------
- * load  - when no room, item is lost.
  */
 static void load_element (Callback_Items * pci)
 {

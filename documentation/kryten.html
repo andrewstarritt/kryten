@@ -12,10 +12,6 @@
 <style type ="text/css">
    logo     { color : #00C000 ; }
    red      { color : #FF0000 ; }
-   literal  { white-space: pre;
-              color : #000000 ;
-              font-family : "courier new";
-              font-size : 14 ; }
 </style>
 
 </head>
@@ -23,7 +19,7 @@
 <body  bgcolor="#FFF0E0" text="#201000"
        link="#0000FF"    vlink="#E000E0"  alink="#FF0000" >
 
-<h1>kryten 2.1.4</h1>
+<h1>kryten 2.1.6</h1>
 
 <h2>1 Introduction</h2>
 
@@ -40,16 +36,17 @@ a user specified criteria, it then invokes a user specified system command.
 In particular <logo>kryten</logo> is provided <b>"AS IS" WITHOUT WARRANTY OF ANY KIND</b>.
 
 <h2>3 Platform</h2>
-<logo>kryten</logo> was developed on and for Linux. Feel free to adapt for Windows and/or MacOS environments.
+<logo>kryten</logo> was developed on and for Linux. Feel free to adapt it for Windows, MacOS or any other environment.
 
 <h2>4 Usage</h2>
-<literal>   usage: kryten  [OPTIONS]  configuration-file
+<font size="4"><pre>
+   usage: kryten  [OPTIONS]  configuration-file
           kryten  --help | -h
           kryten  --version
           kryten  --licence | -l
           kryten  --warranty | -w
           kryten  --redistribute | -r
-</literal>
+</pre></font>
 
 <h2>5 Options</h2>
 
@@ -103,18 +100,17 @@ Blank lines and lines starting with a # character are ignored, the later being u
 Items in <i>italics</i> are primitives and are defined after the syntax.
 Items in single quotes (') are to be interpreted literally.
 <br>
-<br>
 <p>
 &lt;line&gt; ::= '#' <i>any text</i> &nbsp; | &nbsp; &lt;channel-spec&gt; | &nbsp; &lt;null&gt; &nbsp;
 
 <p>
-&lt;channel-spec&gt; ::= &lt;pv-name&gt; &lt;element-indicator&gt; &lt;match-list&gt; &lt;command&gt;
+&lt;channel-spec&gt; ::= &lt;pv-name&gt; &lt;element-index&gt; &lt;match-list&gt; &lt;command&gt;
 
 <p>
 &lt;pv-name&gt; ::= <i>PV name</i>
 
 <p>
-&lt;element-indicator&gt; ::= '[' <i>element index</i> ']' &nbsp; | &nbsp; &lt;null&gt;
+&lt;element-index&gt; ::= '[' <i>element index</i> ']' &nbsp; | &nbsp; &lt;null&gt;
 
 <p>
 &lt;match-list&gt; ::= &lt;match-item&gt; &nbsp; |&nbsp;  &lt;match-item&gt; '|' &lt;match-list&gt;
@@ -135,10 +131,10 @@ Items in single quotes (') are to be interpreted literally.
 &lt;simple-command&gt; ::= <i>basic command, no parameters</i>
 
 <p>
-&lt;elaborate-command&gt; ::= &lt;simple-command&gt; &lt;parameters&gt;
+&lt;elaborate-command&gt; ::= &lt;simple-command&gt; &lt;parameter-list&gt;
 
 <p>
-&lt;parameters&gt; ::= &lt;parameter&gt; &nbsp; | &nbsp;  &lt;parameter&gt; &lt;parameters&gt;
+&lt;parameter-list&gt; ::= &lt;parameter&gt; &nbsp; | &nbsp;  &lt;parameter&gt; &lt;parameter-list&gt;
 
 <p>
 &lt;parameter&gt; ::= <i>any text</i> &nbsp; | &nbsp; '%p' | &nbsp; '%e' | &nbsp; '%m' | &nbsp; '%v'
@@ -193,7 +189,7 @@ to the system call as follows:
 <p>
 
 <h3>6.4 Configuration file example</h3>
-<literal>
+<font size="4"><pre>
 # This is a comment within an example kryten configuration file.
 
 # Monitor beam current and invoke xmessage if current drops below 5mA or
@@ -217,7 +213,7 @@ NATURAL:NUMBER   2 ~ 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 27   /bin/echo %v
 
 # end
 
-</literal>
+</pre></font>
 
 <h2>7 Operations</h2>
 
@@ -225,11 +221,11 @@ The match item values may be a string, an integer or a real number value.
 The type of the first match value determines the Channel Access request
 field type:
 <br>
-<literal>
+<font size="4"><pre>
    String    DBF_STRING
    Integer   DBF_LONG
    Floating  DBF_DOUBLE
-</literal>
+</pre></font>
 
 <p>
 It is therefore important that a range of values, say for a pump, be
@@ -273,17 +269,17 @@ Release notes are <a href="release-notes.html">here</a>.
 
 <h2>9 Trivia</h2>
 <logo>kryten</logo> is named after Kryten 2X4B 523P out of 
-<literal><font size="4">
+<font size="4"><pre>
 
               RE<red>D 
              D</red>WARF
 
-</font></literal>
+</pre></font>
 the classic British SciFi series
 <a href="http://www.reddwarf.co.uk">http://www.reddwarf.co.uk</a>.
 <br>
 <br>
-
+<br>
 
 </body>
 </html>

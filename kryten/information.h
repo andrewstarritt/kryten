@@ -10,7 +10,7 @@
 #ifndef INFORMATION_H_
 #define INFORMATION_H_
 
-#define KRYTEN_VERSION    "2.1.5"
+#define KRYTEN_VERSION    "2.1.6"
 #define BUILD_DATETIME    __DATE__ " " __TIME__
 
 /* All these functions print information only.

@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/kryten.c $
- * $Revision: #17 $
- * $DateTime: 2013/02/03 17:35:29 $
+ * $Revision: #18 $
+ * $DateTime: 2013/02/13 00:43:42 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -52,12 +52,16 @@ extern int daemon (int nochdir, int noclose);
 
 /*------------------------------------------------------------------------------
  * Global Data
- */
-static bool shutdown_required = false;
-
-/* Visible to all units
+ * Visible to all units
  */
 bool is_verbose = false;
+
+
+/*------------------------------------------------------------------------------
+ */
+static volatile bool sig_int_received = false;
+static volatile bool sig_term_received = false;
+
 
 /*------------------------------------------------------------------------------
  * Signal catcher function. Only handles interrupt and terminate signals.
@@ -65,14 +69,13 @@ bool is_verbose = false;
 static void Signal_Catcher (int sig)
 {
    switch (sig) {
+
       case SIGINT:
-         shutdown_required = true;
-         printf ("\nSIGINT received - initiating orderly shutdown.\n");
+         sig_int_received = true;
          break;
 
       case SIGTERM:
-         shutdown_required = true;
-         printf ("\nSIGTERM received - initiating orderly shutdown.\n");
+         sig_term_received = true;
          break;
    }
 }                               /* Signal_Catcher */
@@ -80,12 +83,22 @@ static void Signal_Catcher (int sig)
 
 /*------------------------------------------------------------------------------
  * Checks if time to shut sown the kryten program.
- * This a test for SIGINT/SIGTERM.
+ * This a test if SIGINT/SIGTERM have been received.
  */
 static bool Shut_Down_Is_Required ()
 {
-   return shutdown_required;
-}                               /* Shut_Down */
+   if (sig_int_received) {
+       printf ("\nSIGINT received - initiating orderly shutdown.\n");
+       return true;
+   }
+
+   if (sig_term_received) {
+      printf ("\nSIGTERM received - initiating orderly shutdown.\n");
+      return true;
+   }
+
+   return false;
+}                               /* Shut_Down_Is_Required */
 
 
 /*------------------------------------------------------------------------------
@@ -184,7 +197,7 @@ int main (int argc, char *argv[])
          return 0;
       }
 
-      if (strcmp (argv[1], "--version") == 0) {
+      if (is_either (argv[1], "--version", "-V")) {
          Version ();
          return 0;
       }

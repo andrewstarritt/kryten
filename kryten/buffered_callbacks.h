@@ -1,7 +1,7 @@
-/* $File: //depot/sw/c/buffered_callbacks.h $
- * $Revision: #3 $
- * $DateTime: 2012/07/15 21:09:01 $
- * $Author: andrew $
+/* $File: //depot/sw/epics/common/buffered_callbacks.h $
+ * $Revision: #1 $
+ * $DateTime: 2014/05/11 10:47:28 $
+ * Last checked in by: $Author: andrew $
  *
  * EPICS buffered callback module for use with Ada, Lazarus and other runtime
  * environments which don't like alien threads. It also provides a buffering
@@ -11,7 +11,7 @@
  *
  *   void buffered_connection_handler (struct connection_handler_args args);
  *   void buffered_event_handler (struct event_handler_args args);
- *   int buffered_printf_handler (const char *pformat, va_list args);
+ *   int  buffered_printf_handler (const char *pformat, va_list args);
  *
  * These handers functions are not intended to be called directly by the user
  * program, but instead passed as the callback parameter to the relevent
@@ -65,7 +65,7 @@
  *    void application_printf_handler (char *formated_text) { .... }
  *
  * ---------------------------------------------------------------------------
- * NOTE: To aide binding and callback processing in other languages, the
+ * NOTE: To aid binding and callback processing in other languages, the
  * buffered callback APIs differs slightly from the native EPICS callback APIs.
  *
  * For the event and connection callback handlers, a pointer to the
@@ -76,7 +76,7 @@
  * va_list args parameters into a plain string.
  *
  *
- * Copyright (C) 2010-2012  Andrew C. Starritt
+ * Copyright (C) 2005-2013  Andrew C. Starritt
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -113,14 +113,14 @@ extern "C" {
  */
 void buffered_connection_handler (struct connection_handler_args args);
 void buffered_event_handler (struct event_handler_args args);
-int buffered_printf_handler (const char *pformat, va_list args);
+int  buffered_printf_handler (const char *pformat, va_list args);
 
 /* This function should be called once, prior to calling process_buffered_callbacks
  * or the possibility of any callbacks.
  */
 void initialise_buffered_callbacks ();
 
-/* Returns number of currently buffer callbacks
+/* Returns number of currently buffered callbacks
  */
 int number_of_buffered_callbacks ();
 

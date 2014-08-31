@@ -11,10 +11,6 @@
 <style type ="text/css">
    logo     { color : #00C000 ; }
    red      { color : #FF0000 ; }
-   literal  { white-space: pre;
-              color : #000000 ;
-              font-family : "courier new";
-              font-size : 14 ; }
 </style>
 
 </head>
@@ -23,6 +19,10 @@
        link="#0000FF"    vlink="#E000E0"  alink="#FF0000" >
 
 <h1>Release Notes</h1>
+
+<h2>kryten-2.1.6</h2>
+Cosmetic fixes - tidied up the help info.
+<p>
 
 <h2>kryten-2.1.5</h2>
 Cosmetic fixes - proper colour reset, removal of double "the the" in output messages.
@@ -65,7 +65,7 @@ In verbose mode <logo>kryten</logo> outputs its interpretation of the configurat
 <p>
 This version is more tolerant when parsing te configuration file.
 White space is now allowed between the sub-fields of the match criteria.
-<literal>
+<font size="4"><pre>
 
 # White space now allowed   -----+--+---+-+----+-+
 #                                |  |   | |    | |
@@ -77,7 +77,7 @@ SR11BCM01:LIFETIME_MONITOR   -1.0 ~  5.0 | 50.0 ~ 100.0    echo
 SR11BCM01:LIFETIME_MONITOR   -1.0~5.0|50.0~100.0           echo
 
 # end
-</literal>
+</pre></font>
 
 <p>
 An optional index values may now be specified (for waveform and other array PVs).
@@ -85,12 +85,12 @@ The default is [1], which specifies the first element
 (<logo>kryten</logo> numbers array elements from 1 to N as oppossed to the C style 0 to N-1).
 If there are less elements in the array than the specified index value then the PV is ignored.<br>
 Example:
-<literal>
+<font size="4"><pre>
 
 # Monior the third element of the array for being a prime less than 32.
 #
 SOME_WAVEFORM:ARRAY [3]   2 ~ 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 31  /home/user/bin/prime.sh
-</literal>
+</pre></font>
 
 <p>
 The command script or program should now expect four parameters - the (new) 4th parameter is
@@ -105,6 +105,9 @@ First C code version of <logo>kryten</logo>.
 <h2>kryten-1.1</h2>
 
 Unreleased prototype version of <logo>kryten</logo> implemented using bash script and camonitor.
+
+<br>
+<br>
 
 </body>
 </html>
