@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/kryten.c $
- * $Revision: #15 $
- * $DateTime: 2012/02/26 16:10:02 $
+ * $Revision: #16 $
+ * $DateTime: 2012/05/16 21:51:29 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -35,8 +35,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-
-#include <epicsVersion.h>
 
 #include "kryten.h"
 #include "information.h"
@@ -109,8 +107,9 @@ static bool Run (const char *config_filename,
    }
 
    if (number == 0) {
-      printf ("PV client list is %sempty%s - initialing an early shutdown.\n",
-               yellow, gray);
+      printf
+          ("PV client list is %sempty%s - initialing an early shutdown.\n",
+           yellow, gray);
       return true;
    }
 
@@ -236,7 +235,6 @@ int main (int argc, char *argv[])
 
    if (is_verbose) {
       Version ();
-      printf ("EPICS base version: %s\n", EPICS_VERSION_STRING);
       printf ("configuration file: %s\n", config_filename);
    }
 

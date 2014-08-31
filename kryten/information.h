@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/information.h $
- * $Revision: #9 $
- * $DateTime: 2012/02/26 16:06:27 $
+ * $Revision: #10 $
+ * $DateTime: 2012/05/16 21:51:29 $
  * Last checked in by: $Author: andrew $
  *
  * Copyright (C) 2011-2012  Andrew C. Starritt
@@ -10,7 +10,7 @@
 #ifndef INFORMATION_H_
 #define INFORMATION_H_
 
-#define KRYTEN_VERSION    "2.1.3"
+#define KRYTEN_VERSION    "2.1.4"
 #define BUILD_DATETIME    __DATE__ " " __TIME__
 
 /* All these functions print information only.

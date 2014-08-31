@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/information.c $
- * $Revision: #11 $
- * $DateTime: 2012/03/04 15:10:39 $
+ * $Revision: #12 $
+ * $DateTime: 2012/05/16 21:51:29 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -32,6 +32,8 @@
  */
 #include <stdio.h>
 
+#include <epicsVersion.h>
+
 #include "information.h"
 #include "utilities.h"
 
@@ -39,8 +41,9 @@
  */
 void Version ()
 {
-   printf ("%skryten%s version: %s (built %s)\n",
-           green, reset, KRYTEN_VERSION, BUILD_DATETIME);
+   printf ("%skryten%s version: %s (built %s using %s)\n",
+           green, reset, KRYTEN_VERSION, BUILD_DATETIME,
+           EPICS_VERSION_STRING);
 }
 
 /*------------------------------------------------------------------------------
@@ -173,7 +176,8 @@ static const char *help_text =
     "Any text that does not contain white space and is neither an integer nor a\n"
     "real number is interpreted as an unquoted string. If a string value requires\n"
     "one or more spaces it must be quoted.\n"
-    "Note: quoted and unquoted (e.g. \"Red\" and Red) semantically identical.\n"
+    "Note: quoted and unquoted strings (e.g. \"Closed\" and Closed) are semantically\n"
+    "identical.\n"
     "\n"
     "Match List\n"
     "Upto 16 match items may be specified.\n"
@@ -250,9 +254,7 @@ static const char *help_text =
     "\n"
     "    the PV name,\n"
     "    the match status (i.e. 'match' or 'reject'),\n"
-    "    the current PV value; and\n"
-    "    the element number.\n"
-    "\n";
+    "    the current PV value; and\n" "    the element number.\n" "\n";
 
 static const char *smiley_text =
     "%skryten%s is named after Kryten 2X4B 523P out of RE%sD D%sWARF, the\n"
@@ -275,9 +277,9 @@ void Help ()
  */
 static const char *preamble_text =
     "%skryten%s  Copyright (C) 2011-2012 Andrew C. Starritt\n"
-    "This program comes with ABSOLUTELY NO WARRANTY; for details run 'kryten --warranty'.\n"
-    "This is free software, and you are welcome to redistribute it under certain\n"
-    "conditions; run 'kryten --redistribute' for details.\n\n";
+    "This program comes with ABSOLUTELY NO WARRANTY, for details run 'kryten --warranty'.\n"
+    "This is free software, and you are welcome to redistribute it under certain conditions,\n"
+    "run 'kryten --redistribute' for details. Use option -s to suppress this message.\n\n";
 
 void Preamble ()
 {
