@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/utilities.h $
- * $Revision: #7 $
- * $DateTime: 2011/05/22 15:50:28 $
+ * $Revision: #9 $
+ * $DateTime: 2012/02/25 15:42:01 $
  * $Author: andrew $
  */
 
@@ -68,11 +68,21 @@ typedef struct sVarient_Value {
 
 const char *vkImage (const Varient_Kind kind);
 
+/* Performs a Left == Right test on two varient values.
+ * Unlike Lt which perforce type conversion in order to do the 
+ * comparison, this is a strict type check, i.e 
+ * Same (Float 5.0, Int 5) returns false.
+ *
+ * !(Lt (A,B)) && !(Lt (B,A)) does not always give same result as Same
+ */
+bool Varient_Same (const Varient_Value * left,
+                   const Varient_Value * right);
+
 /* Performs a Left <= Right test on two varient values.
  */
 bool Varient_Le (const Varient_Value * left, const Varient_Value * right);
 
-/* Upon  successful return (value >= 0), this function returns the number of
+/* Upon successful return (value >= 0), this function returns the number of
  * characters written to character string str (not including the trailing '\0'
  * used to end output to strings). The function does not write  more than
  * size bytes (including the trailing '\0').

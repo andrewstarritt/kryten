@@ -1,13 +1,13 @@
 /* $File: //depot/sw/epics/kryten/read_configuration.c $
- * $Revision: #7 $
- * $DateTime: 2011/05/22 15:50:28 $
+ * $Revision: #10 $
+ * $DateTime: 2012/02/25 15:42:01 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011  Andrew C. Starritt
+ * Copyright (C) 2011-2012  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * PO Box 3118, Prahran East, Victoria 3181, Australia.
  *
  * Source code formatting:
- * indent options:  -kr -pcs -i3 -cli3 -nut
+ * indent options:  -kr -pcs -i3 -cli3 -nbbo -nut
  *
  */
 #include <stdio.h>
@@ -42,329 +42,413 @@
 
 #define MAX_LINE_LENGTH    256
 
+#define ALTERNATIVE    '|'
+#define RANGE          '~'
+
+
 static int debug = 0;
 
-/* ------------------------------------------------------------------------------
- * Pre-process line - removes leading white space and converts subsequenct white
- * space groups to a single space except those between double quotes (").
+/*------------------------------------------------------------------------------
+ * Skip white space
  */
-static void pre_process (char *input)
-{
-   size_t n;
-   char *target;
-   bool in_string;
-   int count;
-   size_t j;
-   int k;
-   char c;
-
-   n = strlen (input);
-   target = input;
-   in_string = false;
-   count = 1;                   /* force removal all leading white space */
-   k = 0;                       /* k always <= j */
-   for (j = 0; j <= n; j++) {   /* note: j <= n,  include trailing nul */
-      c = input[j];
-
-      if (c == '"') {
-         in_string = !in_string;
-      }
-
-      if ((!in_string) && isspace (c)) {
-         count++;
-         if (count == 1) {
-            target[k] = c;
-            k++;
-         }
-      } else {
-         count = 0;
-         target[k] = c;
-         k++;
-      }
-   }
-
-   /* Trim trailing spaces as well, if any
-    */
-   n = strlen (input);
-   while ((n > 0) && (isspace (input[n - 1]))) {
-      n--;
-   }
-   input[n] = '\0';
-}                               /* pre_process */
-
+#define SKIP_WHITE_SPACE(input) {                                     \
+   while (isspace (*input)) {                                         \
+      input++;                                                        \
+   }                                                                  \
+}
 
 /*------------------------------------------------------------------------------
- * Parses input string into upto max_items sub-strings using given delimiter.
- * The sub strings are placed into the supplied buffer.
- * Note: length of buffer MUST be >= length of input.
+ * Error return if at end of line
  */
-static bool parse (const char *input, const char delimiter,
-                   const unsigned int max_items, char *buffer,
-                   char *sub_items[], unsigned int *count)
+#define QUIT_ON_EOL(input) {                                          \
+   if (*input == '\0') {                                              \
+      printf ("%s:%d premature end of line.\n", filename, line_num);  \
+      return false;                                                   \
+   }                                                                  \
+}
+
+/*------------------------------------------------------------------------------
+ * Skip white space - return of end of line
+ */
+#define SKIP_WHITE_QUIT_ON_EOL(input) {                               \
+   SKIP_WHITE_SPACE (input);                                          \
+   QUIT_ON_EOL (input);                                               \
+}
+
+/*------------------------------------------------------------------------------
+ * Extract sub string from start upto but excluding finish.
+ * Returns length of extracted string.
+ */
+static int extract (char *into, const int into_size, const char *start,
+                    const char *finish)
 {
-   const char *function = "parse";
+   int n;
 
-   bool in_string;
-   size_t len;
-   size_t j;
-   char c;
-   unsigned int i;
+   n = (long) finish - (long) start;
 
-   /* Ensure not erroneous.
+   /* Truncate if necessary - leave room for the trailing '\0'
     */
-   *count = 0;
+   if (n > into_size - 1) {
+      n = into_size - 1;
+   }
 
-   /* Create copy
+   strncpy (into, start, (size_t) n);
+   into[n] = '\0';
+
+   return n;
+}                               /* extract */
+
+
+/*-----------------------------------------------------------------------------
+ * The item parameter is assumed tp be trimmed of trailing white space.
+ * This function fail returns false if strtod does not consure all of item.
+ *
+ * Ada's  double'Value ("...") would be really good here.
+ */
+static bool scan_double (const char *item, double *number)
+{
+   char *endptr = NULL;
+
+   errno = 0;
+   *number = strtod (item, &endptr);
+   if ((errno == 0) && (endptr == item + strlen (item))) {
+      return true;
+   }
+
+   return false;
+}                               /* scan_double */
+
+/*-----------------------------------------------------------------------------
+ * Ditto for long.
+ */
+static bool scan_long (const char *item, long *number)
+{
+   char *endptr = NULL;
+
+   /* Try decimal number first
     */
-   strncpy (buffer, input, MAX_LINE_LENGTH);
-
-   if (*count >= max_items) {
-      if (debug > 2) {
-         printf ("%s(%c): too many (%u) items: %s\n", function, delimiter,
-                 max_items, input);
-      }
-      return false;
-   }
-   sub_items[0] = &buffer[0];
-   (*count)++;
-
-   in_string = false;
-   len = strlen (buffer);
-   for (j = 0; j < len; j++) {
-      c = buffer[j];
-
-      if ((!in_string) && (c == delimiter)) {
-         if (*count >= max_items) {
-            if (debug > 2) {
-               printf ("%s(%c): too many (%u >) items: %s\n", function,
-                       delimiter, max_items, input);
-            }
-            return false;
-         }
-         buffer[j] = '\0';
-         sub_items[*count] = &buffer[j + 1];
-         (*count)++;
-
-      } else if (c == '"') {
-         in_string = !in_string;
-      }
+   errno = 0;
+   *number = strtol (item, &endptr, 10);
+   if ((errno == 0) && (endptr == item + strlen (item))) {
+      return true;
    }
 
-   if (debug > 4) {
-      for (i = 0; i < *count; i++) {
-         printf ("%s(%c): %2u  %s\n", function, delimiter, i,
-                 sub_items[i]);
-      }
+   /* Try hexadecimal number next
+    */
+   errno = 0;
+   *number = strtol (item, &endptr, 16);
+   if ((errno == 0) && (endptr == item + strlen (item))) {
+      return true;
    }
 
-   return true;
-}                               /* parse */
-
+   return false;
+}                               /* scan_long */
 
 /*------------------------------------------------------------------------------
  * Input format is general, e.g.  123, 0x123, 456.67, 32.99e+8, Text, "text".
  */
-static bool scan_value (char *input, Varient_Value * data)
+static bool scan_value (char *input, Varient_Value * data, char **endptr,
+                        const char *filename, const int line_num)
 {
-   char input_copy[MAX_LINE_LENGTH + 1];
-   char *item;
-   size_t len;
-   char *endptr;
-   bool okay;
+   char *source;
+   int len;
+   char *start;
+   char *finish;
+   char item[MAX_LINE_LENGTH];
+   int n;
 
    /* Ensure not erroneous.
     */
    data->kind = vkVoid;
 
-   /* Create working copy of source input
+   source = input;
+   SKIP_WHITE_SPACE (source);
+
+   /* Remaining length
     */
-   strncpy (input_copy, input, sizeof (input_copy) - 1);
-
-   item = input_copy;
-
-   /* Trim input so that we can check that strtol/strtod consumes all
-    * the input, e.g. verify '12Q' is not an integer value 12
-    */
-   while (isspace (*item)) {
-      item++;
-   }
-
-   len = strlen (item);
-   while ((len > 0) && (isspace (item[len - 1]))) {
-      len--;
-   }
-   item[len] = '\0';
+   len = strlen (source);
 
    /* Need to check that len is non-zero as strtol("", ...) and
     * strtod("", ...) does consume all input, but does not set errno.
-    *
-    * Ada's  double'value ("")  would be really good here.
     */
-   if (len > 0) {
+   if (len == 0) {
+      return false;
+   }
 
-      okay = false;
-
-      if (!okay) {
-         errno = 0;
-         data->value.ival = strtol (item, &endptr, 10);
-         if ((errno == 0) && (endptr == item + len)) {
-            data->kind = vkInteger;
-            okay = true;
-         }
+   /* Save start to lexical item - scan for end.
+    */
+   start = source;
+   if (*source == '"') {
+      source++;
+      while ((*source != '\0') && (*source != '"')) {
+         source++;
       }
-
-      if (!okay) {
-         errno = 0;
-         data->value.ival = strtol (item, &endptr, 16);
-         if ((errno == 0) && (endptr == item + len)) {
-            data->kind = vkInteger;
-            okay = true;
-         }
+      if (*source == '"') {
+         source++;
       }
-
-      if (!okay) {
-         errno = 0;
-         data->value.dval = strtod (item, &endptr);
-         if ((errno == 0) && (endptr == item + len)) {
-            data->kind = vkFloating;
-            okay = true;
-         }
-      }
-
-      if (!okay) {
-         /* De quote string if necessary
-          */
-         if (*item == '"') {
-            item++;
-            len--;
-
-            if ((len > 0) && (item[len - 1] == '"')) {
-               len--;
-               item[len] = '\0';
-            }
-         }
-
-         strncpy (data->value.sval, item, sizeof (data->value.sval));
-         data->kind = vkString;
-      }
-
    } else {
-      printf ("'%s' is a null string\n", item);
-      data->value.sval[0] = '\0';
-      data->kind = vkString;
+      /* Numeric or unquoted string
+       */
+      while ((*source != '\0') && (*source != '~') && (*source != '|') &&
+             (isspace (*source) == 0)) {
+         source++;
+      }
+   }
+   finish = source;
+   *endptr = source;
+
+   /* Extract lexical item into a local copy
+    */
+   n = extract (item, sizeof (item), start, finish);
+
+   if (debug) {
+      printf ("%s:%d  extracted item %s\n", filename, line_num, item);
    }
 
-   if (debug > 0) {
-      char buffer[120] = "";
-      (void) Varient_Image (buffer, sizeof (buffer) - 1, data);
-      printf ("%s\n", buffer);
+   /* check for a quoted string.
+    */
+   if (item[0] == '"') {
+      /* exclude leading/trailing quotes
+       */
+      n = n - 2;
+      if (n > MAX_STRING_SIZE) {
+         printf ("%s:%d quoted string too big: %s\n", filename, line_num,
+                 item);
+         return false;
+      }
+
+      strncpy (data->value.sval, &item[1], n);
+      data->value.sval[n] = '\0';
+
+      data->kind = vkString;
+      return true;
    }
+
+   /* Test for numerical values.
+    * Must test integer first as scan_double will match an integer.
+    */
+   if (scan_long (item, &data->value.ival)) {
+      data->kind = vkInteger;
+      return true;
+   }
+
+   if (scan_double (item, &data->value.dval)) {
+      data->kind = vkFloating;
+      return true;
+   }
+
+   /* Treat as an unquoted string
+    */
+   if (n > MAX_STRING_SIZE) {
+      printf ("%s:%d un-quoted string too big: %s\n", filename, line_num,
+              item);
+      return false;
+   }
+
+   strncpy (data->value.sval, item, n);
+   data->value.sval[n] = '\0';
+
+   data->kind = vkString;
    return true;
 }                               /* scan_value */
 
-
 /*------------------------------------------------------------------------------
- * Input format is VALUE or VALUE:VALUE
+ * pv_name and command must be large enough.
+ * filename and line_num used for error reports
  */
-static bool scan_value_range (const char *input, Varient_Range * match_set)
+bool parse_line (char *line, char *pv_name, int *index,
+                 Varient_Range_Collection * pVRC, char *command,
+                 const char *filename, const int line_num)
 {
-   char parse_buffer[MAX_LINE_LENGTH + 1] = "";
-   char *items[2] = { "", "" };
-   unsigned int count = 0;
+   char *source;
+   char *target;
+   char *endptr;
    bool status;
-
-   status = parse (input, '~', 2, parse_buffer, items, &count);
-   if (status) {
-      status = scan_value (items[0], &(match_set->lower));
-   }
-
-   if (status) {
-      if (count == 2) {
-         status = scan_value (items[1], &(match_set->upper));
-      } else {
-         /* Just set upper value the same as the lower value.
-          */
-         match_set->upper = match_set->lower;
-      }
-   }
-
-   return status;
-}                               /* scan_value_range */
-
-
-/*------------------------------------------------------------------------------
- * Input format is   VALUE_ITEM[,VALUE_ITEM[,VALUE_ITEM,[...]]]  upto 16 items
- * Value Item format is VALUE or VALUE:VALUE
- */
-static bool scan_matches (const char *input,
-                          Varient_Range_Collection * pVRC,
-                          const char *filename, const int line_num)
-{
-   /* static const char *function = "scan_matches"; */
-
-   char parse_buffer[MAX_LINE_LENGTH + 1] = "";
-   char *items[NUMBER_OF_VARIENT_RANGES] =
-       { "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "" };
-   unsigned int count = 0;
-   bool status;
-   unsigned int j;
+   int j;
    Varient_Kind expected;
    Varient_Kind lower_kind;
    Varient_Kind upper_kind;
 
-   /* Ensure not erroneous.
+   /* Ensure not erroneous/set defaults.
     */
+   *pv_name = '\0';
+   *index = 1;
    pVRC->count = 0;
+   *command = '\0';
 
-   status = parse (input, '|', NUMBER_OF_VARIENT_RANGES,
-                   parse_buffer, items, &count);
+   source = line;
 
-   status = (count >= 1);
+   /* Skip white space (if any) - error return if at end of line.
+    */
+   SKIP_WHITE_QUIT_ON_EOL (source);
 
-   if (status) {
-      for (j = 0; j < count; j++) {
-         status = scan_value_range (items[j], &pVRC->item[j]);
-         if (!status) {
-            break;
+   target = pv_name;
+   while ((*source != '\0') && (isspace (*source) == false)) {
+      *target = *source;
+      source++;
+      target++;
+   }
+   *target = '\0';
+
+   /* Check for sensible PV name, check it starts okay at least.
+    */
+   if ((isalnum (*pv_name) == false) && (*pv_name != '$')) {
+      printf ("%s:%d error invalid PV name: %s\n", filename, line_num,
+              pv_name);
+      return false;
+   }
+
+   if (debug > 4) {
+      printf ("%s:%d  pv = %s\n", filename, line_num, pv_name);
+   }
+
+   SKIP_WHITE_QUIT_ON_EOL (source);
+
+   if (*source == '[') {
+      source++;
+      SKIP_WHITE_QUIT_ON_EOL (source);
+
+      *index = strtol (source, &endptr, 10);
+      if ((errno != 0) || (endptr == NULL)) {
+         return false;
+      }
+      source = endptr;
+
+      if (debug > 4) {
+         printf ("%s:%d  index = %d\n", filename, line_num, *index);
+      }
+
+      if (*index < 1) {
+         printf ("%s:%d error invalid PV index: %d\n", filename, line_num,
+                 *index);
+         return false;
+      }
+
+      if (*index > 1000) {
+         printf ("%s:%d query valid PV index: %d ???\n", filename,
+                 line_num, *index);
+      }
+
+      SKIP_WHITE_QUIT_ON_EOL (source);
+
+      if (*source == ']') {
+         source++;
+      } else {
+         printf ("%s:%d error missing ']'\n", filename, line_num);
+         return false;
+      }
+
+   } else {
+      *index = 1;
+   }
+
+   /* Parse match criteria
+    */
+   for (j = 0; j < NUMBER_OF_VARIENT_RANGES; j++) {
+
+      SKIP_WHITE_QUIT_ON_EOL (source);
+      status = scan_value
+          (source, &pVRC->item[j].lower, &endptr, filename, line_num);
+      if (status == false) {
+         return false;
+      }
+      source = endptr;
+
+      SKIP_WHITE_QUIT_ON_EOL (source);
+      if (*source == '~') {
+
+         source++;
+         SKIP_WHITE_QUIT_ON_EOL (source);
+         status = scan_value
+             (source, &pVRC->item[j].upper, &endptr, filename, line_num);
+         if (status == false) {
+            return false;
          }
+         source = endptr;
 
-         expected = pVRC->item[0].lower.kind;
-         lower_kind = pVRC->item[j].lower.kind;
-         upper_kind = pVRC->item[j].upper.kind;
-
-         if (lower_kind == upper_kind) {
-            /* Okay or generate warning together */
-            if (lower_kind != expected) {
-               printf
-                   ("%s:%d warning type mis-match: both values of '%s' are %s, expecting %s.\n",
-                    filename, line_num, items[j], vkImage (lower_kind),
-                    vkImage (expected));
-            }
-         } else {
-            /* Never fails for zeroth entry
-             */
-            if (lower_kind != expected) {
-               printf
-                   ("%s:%d warning type mis-match: lower value of '%s' is %s, expecting %s.\n",
-                    filename, line_num, items[j], vkImage (lower_kind),
-                    vkImage (expected));
-            }
-
-            if (upper_kind != expected) {
-               printf
-                   ("%s:%d warning type mis-match: upper value of '%s' is %s, expecting %s.\n",
-                    filename, line_num, items[j], vkImage (upper_kind),
-                    vkImage (expected));
-            }
-         }
-         /* Update number of valid entries so far
+      } else {
+         /* Just set upper value the same as the lower value.
           */
-         pVRC->count = j + 1;
+         pVRC->item[j].upper = pVRC->item[j].lower;
+      }
+
+      /* Update number of valid entries so far
+       */
+      pVRC->count = j + 1;
+
+      SKIP_WHITE_QUIT_ON_EOL (source);
+      if (*source == '~') {
+         printf ("%s:%d error unexpected 3rd value in sub-match %d\n",
+                 filename, line_num, pVRC->count);
+         return false;
+      }
+
+      /* Are value kinds consistent?
+       */
+      expected = pVRC->item[0].lower.kind;
+      lower_kind = pVRC->item[j].lower.kind;
+      upper_kind = pVRC->item[j].upper.kind;
+
+      if (lower_kind == upper_kind) {
+         /* Okay or generate warning together
+          */
+         if (lower_kind != expected) {
+            printf
+                ("%s:%d warning type mis-match: both values of sub-match %d are %s, expecting %s.\n",
+                 filename, line_num, pVRC->count, vkImage (lower_kind),
+                 vkImage (expected));
+         }
+      } else {
+         /* Never fails for zeroth entry
+          */
+         if (lower_kind != expected) {
+            printf
+                ("%s:%d warning type mis-match: lower value of sub-match %d is %s, expecting %s.\n",
+                 filename, line_num, pVRC->count, vkImage (lower_kind),
+                 vkImage (expected));
+         }
+
+         if (upper_kind != expected) {
+            printf
+                ("%s:%d warning type mis-match: upper value of sub-match %d is %s, expecting %s.\n",
+                 filename, line_num, pVRC->count, vkImage (upper_kind),
+                 vkImage (expected));
+         }
+      }
+
+      if (*source != '|') {
+         break;
+      }
+      source++;                 /* skip the '|' */
+
+      if (pVRC->count >= NUMBER_OF_VARIENT_RANGES) {
+         printf
+             ("%s:%d error attempting to specify more than %d sub-matches\n",
+              filename, line_num, NUMBER_OF_VARIENT_RANGES);
+         return false;
       }
    }
 
-   return status;
-}                               /* scan_matches */
+   SKIP_WHITE_QUIT_ON_EOL (source);
+
+   target = command;
+   while ((*source != '\0') && (isspace (*source) == false)) {
+      *target = *source;
+      source++;
+      target++;
+   }
+   *target = '\0';
+
+   SKIP_WHITE_SPACE (source);
+
+   if (*source != '\0') {
+      printf
+          ("%s:%d warning trailing input after command %s ignored: %s\n",
+           filename, line_num, command, source);
+   }
+
+   return true;
+}                               /* parse_line */
 
 
 /*------------------------------------------------------------------------------
@@ -378,18 +462,13 @@ bool Scan_Configuration_File (const char *filename,
    CA_Client *pClient = NULL;
    int line_num;
    char line[MAX_LINE_LENGTH + 1];
-   size_t n;
-   char parse_buffer[MAX_LINE_LENGTH + 1] = "";
-   char *items[6] = { "", "", "", "", "", "" };
-   unsigned int count = 0;
-   char *pv_name;
-   char *matches;
-   char *command;
-
-   bool status;
-   bool pv_name_is_okay;
-   bool matches_is_okay;
+   int len;
+   char pv_name[MAX_LINE_LENGTH + 1];
+   int index;
+   char command[MAX_LINE_LENGTH + 1];
    Varient_Range_Collection match_set_collection;
+   bool status;
+   char *source;
 
 
    if (debug > 0) {
@@ -416,79 +495,54 @@ bool Scan_Configuration_File (const char *filename,
 
       line_num++;
 
-      /* Remove trailing line feed if needs be.
+      /* Remove trailing \n char
        */
-      n = strlen (line);
-      if ((n >= 1) && (line[n - 1] == '\n')) {
-         n--;
-         line[n] = '\0';
+      len = strlen (line);
+      if ((len > 0) && (line[len - 1] == '\n')) {
+         line[len - 1] = '\0';
       }
 
-      /* Pre-process line, remove leading white space and convert subsequent
-       * un quotes white space groups to a single space.
-       */
-      pre_process (line);
+      source = line;
+      SKIP_WHITE_SPACE (source);
 
       /* Ignore empty lines and comment lines.
        */
-      if ((line[0] == '\0') || (line[0] == '#')) {
+      if ((*source == '\0') || (*source == '#')) {
          continue;
       }
 
-      /* Attempt to read name, match critera and command.
-       */
-      status = parse (line, ' ', 6, parse_buffer, items, &count);
-      if (!status) {
+      status = parse_line (source, pv_name, &index, &match_set_collection,
+                           command, filename, line_num);
+
+      if (status == false) {
+         /* Any errors already reported - jist print whole line.
+          */
+         printf ("%s:%d %s\n", filename, line_num, line);
          continue;
       }
 
-      if (count != 3) {
-         printf
-             ("%s:%d warning skipping: '%s', %u items found, but expecting 3\n",
-              filename, line_num, line, count);
-         continue;
+      if (debug >= 2) {
+         printf ("processing PV: %s [%d] {match}%d %s\n", pv_name, index,
+                 match_set_collection.count, command);
       }
 
-      /* Set up aray aliases
-       */
-      pv_name = items[0];
-      matches = items[1];
-      command = items[2];
-
-      /* Check for sensible channel name, check it starts okay at least.
-       */
-      pv_name_is_okay = isalnum (pv_name[0]) || pv_name[0] == '$';
-
-      /* Check for sensible match criteria.
-       */
-      match_set_collection.count = 0;
-      matches_is_okay =
-          scan_matches (matches, &match_set_collection, filename,
-                        line_num);
-
-      if (pv_name_is_okay && matches_is_okay) {
-
-         if (debug >= 2) {
-            printf ("processing PV: %s\n", pv_name);
-         }
-
-         pClient = Allocate_Client ();
+      pClient = Allocate_Client ();
+      if (pClient) {
          strncpy (pClient->pv_name, pv_name, sizeof (pClient->pv_name));
+         pClient->element_index = index;
          strncpy (pClient->match_command, command, MATCH_COMMAND_LENGTH);
-
          pClient->match_set_collection = match_set_collection;
 
          /* Lastly add to client list.
           */
-         if (pClient) {
-            ellAdd (ca_client_list, (ELLNODE *) pClient);
-         }
+         ellAdd (ca_client_list, (ELLNODE *) pClient);
          continue;
       }
 
       /* Ignore anything left over
        */
-      printf ("%s:%d warning skipping: '%s'\n", filename, line_num, line);
+      printf ("%s:%d warning skipping: '%s' - failed to allocate client\n",
+              filename, line_num, line);
    }
 
    /* Close file

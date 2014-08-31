@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/pv_client.h $
- * $Revision: #8 $
- * $DateTime: 2011/05/22 15:50:28 $
+ * $Revision: #10 $
+ * $DateTime: 2012/02/24 23:15:17 $
  * $Author: andrew $
  */
 
@@ -44,6 +44,7 @@ struct sCA_Client {
    /* Channel Access connection info
     */
    char pv_name[80];
+   int element_index;
    chid channel_id;
    evid event_id;
    char host_name[80];
@@ -97,7 +98,9 @@ typedef bool (*Bool_Function_Handle) ();
 
 CA_Client *Allocate_Client ();
 
-bool Create_PV_Client_List (const char *pv_list_filename);
+bool Create_PV_Client_List (const char *pv_list_filename, int *number);
+
+void Print_Clients_Info ();
 
 bool Process_Clients (Bool_Function_Handle shut_down);
 

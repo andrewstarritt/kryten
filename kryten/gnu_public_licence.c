@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/gnu_public_licence.c $
- * $Revision: #1 $
- * $DateTime: 2012/02/04 09:44:25 $
+ * $Revision: #2 $
+ * $DateTime: 2012/02/25 15:42:01 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -650,8 +650,7 @@ void Licence ()
 /*------------------------------------------------------------------------------
  */
 static const char *no_warranty_text =
-    "%skryten%s is distributed under the the GNU General Public License version 3,\n"
-    "which includes the following condtion:\n"
+    "%skryten%s is distributed under the the GNU General Public License version 3.\n"
     "\n"
     "Disclaimer of Warranty.\n"
     "THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW.\n"

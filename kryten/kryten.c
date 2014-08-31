@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/kryten.c $
- * $Revision: #12 $
- * $DateTime: 2012/02/19 11:24:28 $
+ * $Revision: #14 $
+ * $DateTime: 2012/02/24 23:15:17 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -97,19 +97,32 @@ static bool Run (const char *config_filename,
                  const bool just_check_config_file, const bool is_daemon)
 {
    bool status;
+   int number;
 
    /* Read configuration file to get list of required PVs
     * and create a list of PV clients.
     */
-   status = Create_PV_Client_List (config_filename);
+   status = Create_PV_Client_List (config_filename, &number);
    if (!status) {
       printf ("%sError%s : PV client list creation failed\n", red, gray);
       return false;
    }
 
+   if (is_verbose) {
+      printf ("Channels/match criteria...\n");
+      Print_Clients_Info ();
+   }
+
    if (just_check_config_file) {
       /* Nothing more to do - just return.
        */
+      return true;
+   }
+
+   if (number == 0) {
+      printf
+          ("PV client list is %sempty%s - an early shutdown is in order\n",
+           yellow, gray);
       return true;
    }
 

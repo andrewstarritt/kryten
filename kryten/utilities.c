@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/utilities.c $
- * $Revision: #7 $
- * $DateTime: 2011/05/22 15:50:28 $
+ * $Revision: #8 $
+ * $DateTime: 2012/02/24 23:15:17 $
  * $Author: andrew $
  *
  * Description:
@@ -114,6 +114,53 @@ const char *vkImage (const Varient_Kind kind)
    return "unknown var kind";
 }                               /* vkImage */
 
+
+/*------------------------------------------------------------------------------
+ */
+bool Varient_Same (const Varient_Value * left, const Varient_Value * right)
+{
+   bool result = false;
+   bool error = false;
+   int t;
+
+   if (left->kind == right->kind) {
+
+      switch (right->kind) {
+         case vkVoid:
+            result = true;
+            break;
+
+         case vkString:
+            t = strncmp (left->value.sval, right->value.sval,
+                         sizeof (left->value.sval));
+            result = (t == 0);
+            break;
+
+         case vkFloating:
+            result = (left->value.dval == right->value.dval);
+            break;
+
+         case vkInteger:
+            result = (left->value.ival == right->value.ival);
+            break;
+
+         default:
+            result = false;
+            error = true;
+            break;
+      }
+
+   } else {
+      result = false;
+   }
+
+   if (error) {
+      printf ("Varient_Same error: left kind: %d, right kind: %d\n",
+              (int) left->kind, (int) right->kind);
+   }
+
+   return result;
+}                               /* Varient_Same */
 
 /*------------------------------------------------------------------------------
  */

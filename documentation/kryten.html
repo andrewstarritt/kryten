@@ -1,3 +1,8 @@
+<!-- $File: //depot/sw/epics/kryten/documentation/kryten.html $ -->
+<!-- $Revision: #5 $ -->
+<!-- $DateTime: 2012/02/25 15:42:01 $ -->
+<!-- Last checked in by: $Author: andrew $ -->
+
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
 <head>
@@ -7,13 +12,14 @@
    logo     { color : #00C000 ; }
    red      { color : #FF0000 ; }
    literal  { white-space: pre;
+              color : #000000 ;
               font-family : "courier new";
               font-size : 14 ; }
 </style>
 
 </head>
 
-<body  bgcolor="#FFE8D0" text="#000060" >
+<body  bgcolor="#FFF0E0" text="#201000" >
 
 <h2>Introduction</h2>
 
@@ -95,7 +101,11 @@ Otherwise the line consists of fields. Fields are separated by white
 space (spaces and/or tabs) with optional leading and tailing white space.
 
 <h4>Field 1</h4>
-The first field is the PV name.
+The first field is the PV name. 
+For waveform records and other array PVs, the PV name may be immediately 
+followed by an array element number enclosed in square brackets. 
+The default is '[1]'.<br>
+Note: <logo>kryten</logo> array indexing starts from 1.
 
 <h4>Field 2</h4>
 The second field is the match criteria. This consists of upto 16 sub
@@ -135,15 +145,20 @@ If a path name is not specified, then the usual PATH environment search
 rules apply.
 
 <p>
-The program or script should expect three parameters, namely the PV name,
-the match status (i.e. 'entry' or 'exit') and the current PV value. The
-program or script is only invoked when the match status changes. If a PV
-disconnects then the program or script is called with a 'disconnect' status
-and the value parameter is an empty string.
+The program or script should expect four parameters, namely:
+<p>
+&nbsp; &nbsp; &nbsp; the PV name,<br>
+&nbsp; &nbsp; &nbsp; the match status (i.e. 'entry' or 'exit'),<br>
+&nbsp; &nbsp; &nbsp; the current PV value; and <br>
+&nbsp; &nbsp; &nbsp; the element number.
+<p>
+The program or script is only invoked when the match status changes.
+If a PV disconnects then the program or script is called with a 
+'disconnect' status and the value parameter is an empty string.
 
 <p>
 The program or script is run in background mode, and therefore it will run
-asynchronously. It is the users responsibility to manage the interactions
+asynchronously. It is the user's responsibility to manage the interactions
 between any asynchronous processes.
 
 
@@ -156,12 +171,16 @@ between any asynchronous processes.
 # exceeds 205 mA or when the current enters the range 5mA to 205 mA
 # Note: we assume the beam current never ever < -1.0e9 or > +1.0e9
 #
-SR11BCM01:CURRENT_MONITOR   -1.0e9~5.0|205.0~+1.0e9   /usr/bin/xmessage
+SR11BCM01:CURRENT_MONITOR   -1.0e9 ~ 5.0 | 205.0~+1.0e9   /usr/bin/xmessage
 
 # Monitor the rainbow status and invoke echo when status becomes Green or Orange
 # or when the status ceases to be neither Green nor Orange.
 #
-RAINDOW:STATUS              "Green"|"Orange"          /bin/echo
+RAINDOW:STATUS              "Green" | "Orange"            /bin/echo
+
+# Monitor 3rd element of waveform record for value being 199 or otherwise
+#
+WAVEFORM:ARRAY [3]           199                          /bin/echo
 
 # end
 

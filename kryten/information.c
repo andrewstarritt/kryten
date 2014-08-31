@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/information.c $
- * $Revision: #7 $
- * $DateTime: 2012/02/04 09:44:25 $
+ * $Revision: #9 $
+ * $DateTime: 2012/02/25 15:42:01 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -58,11 +58,12 @@ void Usage ()
 
 /*------------------------------------------------------------------------------
  */
-static const char *help_text =
+static const char *intro_text =
     "%skryten%s allows an arbitary set of EPICS Channel Access Process Variables (PVs)\n"
     "to be monitored and if the monitored value starts to match or ceases to match\n"
-    "the given criteria then invokes a specified system command.\n"
-    "\n"
+    "the given criteria then invokes a specified system command.\n";
+
+static const char *help_text =
     "Options\n"
     "\n"
     "--check, -c\n"
@@ -104,7 +105,10 @@ static const char *help_text =
     "    Otherwise the line consists of fields. Fields are separated by white\n"
     "    space (spaces and/or tabs) with optional leading and tailing white space.\n"
     "\n"
-    "    The first field is the PV name.\n"
+    "    The first field is the PV name. For waveform records and other array PVs,\n"
+    "    the PV name may be immediatly followed by an array element number enclosed\n"
+    "    in square brackets. The default is '[1]'.\n"
+    "    Note: %skryten%s array indexing starts from 1.\n"
     "\n"
     "    The second field is the match criteria. This consists of upto 16 sub\n"
     "    -match criteria seprated by a | character. Each sub field consists of\n"
@@ -135,30 +139,40 @@ static const char *help_text =
     "    If a path name is not specified, then the usual PATH environment search\n"
     "    rules apply.\n"
     "\n"
-    "    The program or script should expect three parameters, namely the PV name,\n"
-    "    the match status (i.e. 'entry' or 'exit') and the current PV value. The\n"
-    "    program or script is only invoked when the natch status changes. If a PV\n"
-    "    disconnects then the program or script is called with a 'disconnect' status\n"
-    "    and the value parameter is an empty string.\n"
+    "    The program or script should expect four parameters, namely:\n"
+    "        the PV name,\n"
+    "        the match status (i.e. 'entry' or 'exit'),\n"
+    "        the current PV value, and\n"
+    "        the element number.\n"
     "\n"
-    "    The program or script is run in background mode, and therefore it will run\n"
-    "    asynchronously.\n\n";
+    "    The program or script is only invoked when the match status changes.\n"
+    "    If a PV disconnects then the program or script is called with a\n"
+    "    'disconnect' status and the value parameter is an empty string.\n"
+    "\n"
+    "    The program or script is run in background mode, and therefore it will\n"
+    "    run asynchronously. It is the user's responsibility to manage the \n"
+    "    interactions between any asynchronous processes.\n\n";
 
 static const char *example_text =
     "Configuration file example:\n"
-    "\n"
-    "# This is a comment within and example kryten configuration file\n"
+    "%s\n"
+    "# This is a comment within an example kryten configuration file\n"
     "\n"
     "# Monitor beam current and invoke xmessage if current drops below 5mA or\n"
     "# exceeds 205 mA\n"
     "# Note: we assume current never ever < -1.0e9 or > +1.0e9\n"
     "#\n"
-    "SR11BCM01:CURRENT_MONITOR   -1.0e9~5.0|205.0~+1.0e9   /usr/bin/xmessage\n"
+    "SR11BCM01:CURRENT_MONITOR   -1.0e9 ~ 5.0 | 205.0 ~ +1.0e9   /usr/bin/xmessage\n"
     "\n"
     "# Monitor the rainbow status and invoke echo when status becomes Green or Orange.\n"
+    "# Green is quoted while Orange is not.\n"
     "#\n"
-    "RAINDOW:STATUS              \"Green\"|\"Orange\"          /bin/echo\n"
-    "\n" "# end\n\n";
+    "RAINDOW:STATUS              \"Green\" | Orange                /bin/echo\n"
+    "#\n"
+    "# Monitor 3rd element of waveform record for value being 199 or otherwise\n"
+    "#\n"
+    "WAVEFORM:ARRAY [3]           199                            /bin/echo\n"
+    "\n" "# end\n%s\n";
 
 static const char *smiley_text =
     "%skryten%s is named after Kryten 2X4B 523P out of RE%sD D%sWARF, the\n"
@@ -168,10 +182,12 @@ void Help ()
 {
    Version ();
    printf ("\n");
+   printf (intro_text, green, reset);
+   printf ("\n");
    Usage ();
    printf ("\n");
    printf (help_text, green, reset);
-   printf (example_text);
+   printf (example_text, yellow, reset);
    printf (smiley_text, green, reset, red, reset);
 }                               /* Help */
 

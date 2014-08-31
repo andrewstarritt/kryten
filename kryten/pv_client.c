@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/pv_client.c $
- * $Revision: #12 $
- * $DateTime: 2012/02/19 11:24:28 $
+ * $Revision: #15 $
+ * $DateTime: 2012/02/25 15:42:01 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -145,22 +145,32 @@ static void Subscribe_Channel (CA_Client * pClient)
          return;
    }
 
-   /* Just deal with scalar values for now.
+   /* If the PV does not support request element, then do not read or
+    * subscrible for data.
     */
-   if (count > 1) {
-      truncated = 1;
+   if (pClient->element_index > count) {
+      printf
+          ("%s has %lu elements, element %d not available\n",
+           pClient->pv_name, count, pClient->element_index);
+      return;
+   }
 
-      printf ("PV (%s) request count truncated from %lu to %lu elements\n",
-              pClient->pv_name, count, truncated);
+   if (pClient->element_index < count) {
+      truncated = pClient->element_index;
+
+      printf
+          ("%s array get/subscription truncated from %lu to %lu elements\n",
+           pClient->pv_name, count, truncated);
 
       count = truncated;
    }
 
-   /* Initial request 
+   /* Initial request
     */
-   status =
-       ca_array_get_callback (initial_type, count, pClient->channel_id,
-                              buffered_event_handler, &Get);
+   status = ca_array_get_callback
+       (initial_type, count, pClient->channel_id,
+        buffered_event_handler, &Get);
+
    if (status != ECA_NORMAL) {
       printf ("ca_array_get_callback (%s) failed (%s)\n", pClient->pv_name,
               ca_message (status));
@@ -169,10 +179,11 @@ static void Subscribe_Channel (CA_Client * pClient)
 
    /* ... and now subscribe for time stamped data updates as well.
     */
-   status =
-       ca_create_subscription (update_type, count, pClient->channel_id,
-                               DBE_LOG | DBE_ALARM, buffered_event_handler,
-                               &Event, &pClient->event_id);
+   status = ca_create_subscription
+       (update_type, count, pClient->channel_id,
+        DBE_LOG | DBE_ALARM, buffered_event_handler,
+        &Event, &pClient->event_id);
+
    if (status != ECA_NORMAL) {
       printf ("ca_create_subscription (%s) failed (%s)\n",
               pClient->pv_name, ca_message (status));
@@ -262,20 +273,26 @@ static void Get_Event_Handler (CA_Client * pClient,
 
 
    const union db_access_val *pDbr = (union db_access_val *) args->dbr;
-   long length;
+   int number;
+   int e;
    Varient_Kind kind;
    bool enums_as_string;
    dbr_short_t enum_value;
 
-   /* Get length of value data.
+   /* Get number of elements.
     */
-   length = max (0, args->count) * dbr_value_size[args->type];
+   number = max (0, args->count);
 
-   if (length == 0) {
-      printf ("%s (%s): zero length data for buffer count/type %ld/%ld\n",
-              function, pClient->pv_name, args->count, args->type);
+   if (number < pClient->element_index) {
+      printf
+          ("%s (%s): received elements (%d) less than expected (%d) for buffer type %ld\n",
+           function, pClient->pv_name, number, pClient->element_index,
+           args->type);
       return;
    }
+   /* Form aray access index 
+    */
+   e = number - 1;
 
    kind = pClient->match_set_collection.item[0].lower.kind;
    enums_as_string = (kind == vkString);
@@ -289,7 +306,7 @@ static void Get_Event_Handler (CA_Client * pClient,
          CLEAR_NUMERIC;
          pClient->data.kind = vkString;
          strncpy (pClient->data.value.sval,
-                  pDbr->sstrval.value, MAX_STRING_SIZE);
+                  (&pDbr->sstrval.value)[e], MAX_STRING_SIZE);
          pClient->data.value.sval[MAX_STRING_SIZE] = '\0';
          break;
 
@@ -297,14 +314,14 @@ static void Get_Event_Handler (CA_Client * pClient,
          ASSIGN_STATUS (pDbr->cshrtval);
          ASSIGN_NUMERIC (pDbr->cshrtval, 0);
          pClient->data.kind = vkInteger;
-         pClient->data.value.ival = (long) pDbr->cshrtval.value;
+         pClient->data.value.ival = (long) (&pDbr->cshrtval.value)[e];
          break;
 
       case DBR_CTRL_FLOAT:
          ASSIGN_STATUS (pDbr->cfltval);
          ASSIGN_NUMERIC (pDbr->cfltval, pDbr->cfltval.precision);
          pClient->data.kind = vkFloating;
-         pClient->data.value.dval = (double) pDbr->cfltval.value;
+         pClient->data.value.dval = (double) (&pDbr->cfltval.value)[e];
          break;
 
       case DBR_CTRL_ENUM:
@@ -314,7 +331,7 @@ static void Get_Event_Handler (CA_Client * pClient,
          memcpy (pClient->enum_strings, pDbr->cenmval.strs,
                  sizeof (pClient->enum_strings));
 
-         enum_value = (dbr_short_t) pDbr->cenmval.value;
+         enum_value = (dbr_short_t) (&pDbr->cenmval.value)[e];
          if (enums_as_string) {
             pClient->data.kind = vkString;
             if (enum_value < pClient->num_states) {
@@ -335,21 +352,21 @@ static void Get_Event_Handler (CA_Client * pClient,
          ASSIGN_STATUS (pDbr->cchrval);
          ASSIGN_NUMERIC (pDbr->cchrval, 0);
          pClient->data.kind = vkInteger;
-         pClient->data.value.ival = (long) pDbr->cchrval.value;
+         pClient->data.value.ival = (long) (&pDbr->cchrval.value)[e];
          break;
 
       case DBR_CTRL_LONG:
          ASSIGN_STATUS (pDbr->clngval);
          ASSIGN_NUMERIC (pDbr->clngval, 0);
          pClient->data.kind = vkInteger;
-         pClient->data.value.ival = (long) pDbr->clngval.value;
+         pClient->data.value.ival = (long) (&pDbr->clngval.value)[e];
          break;
 
       case DBR_CTRL_DOUBLE:
          ASSIGN_STATUS (pDbr->cdblval);
          ASSIGN_NUMERIC (pDbr->cdblval, pDbr->cdblval.precision);
          pClient->data.kind = vkFloating;
-         pClient->data.value.dval = (double) pDbr->cdblval.value;
+         pClient->data.value.dval = (double) (&pDbr->cdblval.value)[e];
          break;
 
    /** Time updates values [count], time, severity and status **/
@@ -358,25 +375,25 @@ static void Get_Event_Handler (CA_Client * pClient,
          ASSIGN_STATUS_AND_TIME (pDbr->tstrval);
          pClient->data.kind = vkString;
          strncpy (pClient->data.value.sval,
-                  pDbr->tstrval.value, MAX_STRING_SIZE);
+                  (&pDbr->tstrval.value)[e], MAX_STRING_SIZE);
          pClient->data.value.sval[MAX_STRING_SIZE] = '\0';
          break;
 
       case DBR_TIME_SHORT:
          ASSIGN_STATUS_AND_TIME (pDbr->tshrtval);
          pClient->data.kind = vkInteger;
-         pClient->data.value.ival = (long) pDbr->tshrtval.value;
+         pClient->data.value.ival = (long) (&pDbr->tshrtval.value)[e];
          break;
 
       case DBR_TIME_FLOAT:
          ASSIGN_STATUS_AND_TIME (pDbr->tfltval);
          pClient->data.kind = vkFloating;
-         pClient->data.value.dval = (double) pDbr->tfltval.value;
+         pClient->data.value.dval = (double) (&pDbr->tfltval.value)[e];
          break;
 
       case DBR_TIME_ENUM:
          ASSIGN_STATUS_AND_TIME (pDbr->tenmval);
-         enum_value = (dbr_short_t) pDbr->tenmval.value;
+         enum_value = (dbr_short_t) (&pDbr->tenmval.value)[e];
          if (enums_as_string) {
             pClient->data.kind = vkString;
             if (enum_value < pClient->num_states) {
@@ -396,19 +413,19 @@ static void Get_Event_Handler (CA_Client * pClient,
       case DBR_TIME_CHAR:
          ASSIGN_STATUS_AND_TIME (pDbr->tchrval);
          pClient->data.kind = vkInteger;
-         pClient->data.value.ival = (long) pDbr->tchrval.value;
+         pClient->data.value.ival = (long) (&pDbr->tchrval.value)[e];
          break;
 
       case DBR_TIME_LONG:
          ASSIGN_STATUS_AND_TIME (pDbr->tlngval);
          pClient->data.kind = vkInteger;
-         pClient->data.value.ival = (long) pDbr->tlngval.value;
+         pClient->data.value.ival = (long) (&pDbr->tlngval.value)[e];
          break;
 
       case DBR_TIME_DOUBLE:
          ASSIGN_STATUS_AND_TIME (pDbr->tdblval);
          pClient->data.kind = vkFloating;
-         pClient->data.value.dval = (double) pDbr->tdblval.value;
+         pClient->data.value.dval = (double) (&pDbr->tdblval.value)[e];
          break;
 
       default:
@@ -664,7 +681,7 @@ static void Clear_All_Channels (ELLLIST * CA_Client_List)
  * LOCAL DATA
  *------------------------------------------------------------------------------
  */
-static ELLLIST CA_Client_List;
+static ELLLIST CA_Client_List = ELLLIST_INIT;
 
 
 /*------------------------------------------------------------------------------
@@ -692,7 +709,7 @@ CA_Client *Allocate_Client ()
 
 /*------------------------------------------------------------------------------
  */
-bool Create_PV_Client_List (const char *pv_list_filename)
+bool Create_PV_Client_List (const char *pv_list_filename, int *number)
 {
    bool result;
    int n;
@@ -704,12 +721,85 @@ bool Create_PV_Client_List (const char *pv_list_filename)
    result = Scan_Configuration_File (pv_list_filename, &CA_Client_List);
 
    n = ellCount (&CA_Client_List);
-   printf ("PV CA client list created - %d %s.\n", n,
+   printf ("PV client list created - %d %s.\n", n,
            (n == 1 ? "entry" : " entries"));
 
+   *number = n;
    return result;
 }                               /* Create_PV_Client_List */
 
+/*------------------------------------------------------------------------------
+ */
+void Print_Clients_Info ()
+{
+   CA_Client *pClient;
+   unsigned int j;
+   Varient_Kind kind;
+   char *request;
+   Varient_Range *pVR;
+   char lower[45];
+   char upper[45];
+   char *lq, *uq;
+
+   printf ("\n");
+   pClient = (CA_Client *) ellFirst (&CA_Client_List);
+   while (pClient) {
+
+      kind = pClient->match_set_collection.item[0].lower.kind;
+      switch (kind) {
+
+         case vkString:
+            request = "DBF_STRING";
+            break;
+
+         case vkInteger:
+            request = "DBF_LONG";
+            break;
+
+         case vkFloating:
+            request = "DBF_DOUBLE";
+            break;
+
+         default:
+            request = "NONE";
+            break;
+      }
+
+      printf ("PV Name: %s [%d]\n", pClient->pv_name,
+              pClient->element_index);
+
+      printf ("Request: %s\n", request);
+
+      printf ("Command: %s\n", pClient->match_command);
+
+      for (j = 0; j < pClient->match_set_collection.count; j++) {
+         if (j == 0) {
+            printf ("Matches: ");
+         } else {
+            printf ("     or: ");
+         }
+
+         pVR = &pClient->match_set_collection.item[j];
+
+         Varient_Image (lower, sizeof (lower), &pVR->lower);
+         lq = (pVR->lower.kind == vkString) ? "\"" : "";
+
+         Varient_Image (upper, sizeof (upper), &pVR->upper);
+         uq = (pVR->upper.kind == vkString) ? "\"" : "";
+
+         printf ("%s%s%s", lq, lower, lq);
+         if (Varient_Same (&pVR->lower, &pVR->upper) == false) {
+            printf (" to %s%s%s", uq, upper, uq);
+         }
+         printf ("\n");
+
+      }
+      printf ("\n");
+
+      pClient = (CA_Client *) ellNext ((ELLNODE *) pClient);
+   }
+
+}                               /* Print_Clients_Info */
 
 /*------------------------------------------------------------------------------
  */
@@ -721,7 +811,7 @@ bool Process_Clients (Bool_Function_Handle shut_down)
    int status;
    int p;
    static long last_time;
-   static long this_time;
+/*   static long this_time;  */
 
    initialise_buffered_callbacks ();
 
@@ -761,7 +851,7 @@ bool Process_Clients (Bool_Function_Handle shut_down)
       }
       p = process_buffered_callbacks (maximum);
 
-      /** TODO
+      /** TODO Maybe ??
       this_time = ((long) time (NULL));
       if (this_time >= last_time + 60) {
          printf ("re-reading /etc/kryton.conf\n");

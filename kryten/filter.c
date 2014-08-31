@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/filter.c $
- * $Revision: #10 $
- * $DateTime: 2012/02/04 09:44:25 $
+ * $Revision: #11 $
+ * $DateTime: 2012/02/25 15:42:01 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -38,6 +38,7 @@
 
 #define VALUE_IMAGE_SIZE 44
 #define STATE_IMAGE_SIZE 12
+#define INDEX_IMAGE_SIZE  8
 
 /*------------------------------------------------------------------------------
  */
@@ -55,12 +56,12 @@ static void call_command (CA_Client * pClient, const char *state_image,
 {
    char command[sizeof (pClient->match_command) +
                 sizeof (pClient->pv_name) + STATE_IMAGE_SIZE +
-                VALUE_IMAGE_SIZE + 12];
+                VALUE_IMAGE_SIZE + INDEX_IMAGE_SIZE + 12];
    int status;
 
-   snprintf (command, sizeof (command), "%s %s '%s' '%s' &",
+   snprintf (command, sizeof (command), "%s %s '%s' '%s' %d &",
              pClient->match_command, pClient->pv_name, state_image,
-             value_image);
+             value_image, pClient->element_index);
 
    if (is_verbose) {
       printf ("calling system (\"%s\")\n", command);

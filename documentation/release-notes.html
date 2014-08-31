@@ -1,0 +1,76 @@
+<!-- $File: //depot/sw/epics/kryten/documentation/release-notes.html $ -->
+<!-- $Revision: #2 $ -->
+<!-- $DateTime: 2012/02/25 15:42:01 $ -->
+<!-- Last checked in by: $Author: andrew $ -->
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head>
+<title>Kryten Release Notes</title>
+
+<style type ="text/css">
+   logo     { color : #00C000 ; }
+   red      { color : #FF0000 ; }
+   literal  { white-space: pre;
+              color : #000000 ;
+              font-family : "courier new";
+              font-size : 14 ; }
+</style>
+
+</head>
+
+<body  bgcolor="#FFF0E0" text="#201000" >
+
+<h2>kryten-2.1.2</h2>
+
+<logo>kryten</logo> terminates if the configuration file does not specify any PVs.
+
+<p>
+In verbose mode <logo>kryten</logo> outputs its interpretation of the configuration.
+
+<p>
+This version is more tolerant when parsing te configuration file.
+White space is now allowed between the sub-fields of the match criteria.
+<literal>
+
+# White space now allowed   -----+--+---+-+----+-+
+#                                |  |   | |    | |
+#                                v  v   v v    v v
+SR11BCM01:LIFETIME_MONITOR   -1.0 ~  5.0 | 50.0 ~ 100.0    echo
+
+# Whereas previosly had to be like this:
+#
+SR11BCM01:LIFETIME_MONITOR   -1.0~5.0|50.0~100.0           echo
+
+# end
+</literal>
+
+<p>
+An optional index values may now be specified (for waveform and other array PVs).
+The default is 1, the first element (<logo>kryten</logo> numbers array elements from 1 to N as oppossed to C style 0 to N-1).
+If there are less elements in the array than the specified index value then the PV is ignored.
+Example:
+<literal>
+
+# Monior the third element of the array for being prime less than 32.
+#
+SOME_WAVEFORM:ARRAY [3]   2 ~ 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 31  /home/user/bin/prime.sh
+</literal>
+
+<p>
+The command script or program should now expect four parameters - the (new) 4th parameter is
+the element index.
+<p>
+Created this Release Notes files.
+
+<h2>kryten-2.1.1</h2>
+
+First C code version of <logo>kryten</logo>.
+
+<h2>kryten-1.1</h2>
+
+Unreleased prototype version of <logo>kryten</logo> implemented using bash script and camonitor.
+
+</body>
+</html>
+
