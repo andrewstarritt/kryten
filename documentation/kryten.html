@@ -1,8 +1,8 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <!-- $File: //depot/sw/epics/kryten/documentation/kryten.html $ -->
-<!-- $Revision: #8 $ -->
-<!-- $DateTime: 2012/05/16 21:51:29 $ -->
+<!-- $Revision: #9 $ -->
+<!-- $DateTime: 2013/02/03 17:35:29 $ -->
 <!-- Last checked in by: $Author: andrew $ -->
 
 <html>
@@ -25,24 +25,24 @@
 
 <h1>kryten 2.1.4</h1>
 
-<h2>Introduction</h2>
+<h2>1 Introduction</h2>
 
-<logo>kryten</logo> is a command line EPICS extention that allows
-an arbitary set of Channel Access Process Variables&nbsp;(PVs) to be monitored;
-and if the monitored values starts to match or ceases to match the specified
-criteria it then invokes the specified system command.
+<logo>kryten</logo> is a command line EPICS Channel Access client (extention) that allows
+an arbitary set of Process Variables&nbsp;(PVs) to be monitored;
+and for each of these channels if the monitored value starts to match or ceases to match
+a user specified criteria, it then invokes a user specified system command.
 
-<h2>License</h2>
+<h2>2 License</h2>
 
-<logo>kryten</logo> is distributed under the GNU General Public
-<a href="http://www.gnu.org/licenses/gpl-3.0-standalone.html">License</a> version 3.
+<logo>kryten</logo> is distributed under the
+<a href="http://www.gnu.org/licenses/gpl-3.0-standalone.html">GNU General Public License version 3</a>.
 <p>
 In particular <logo>kryten</logo> is provided <b>"AS IS" WITHOUT WARRANTY OF ANY KIND</b>.
 
-<h2>Platform</h2>
-<logo>kryten</logo> was developed on and for Linux.
+<h2>3 Platform</h2>
+<logo>kryten</logo> was developed on and for Linux. Feel free to adapt for Windows and/or MacOS environments.
 
-<h2>Usage</h2>
+<h2>4 Usage</h2>
 <literal>   usage: kryten  [OPTIONS]  configuration-file
           kryten  --help | -h
           kryten  --version
@@ -51,7 +51,7 @@ In particular <logo>kryten</logo> is provided <b>"AS IS" WITHOUT WARRANTY OF ANY
           kryten  --redistribute | -r
 </literal>
 
-<h2>Options</h2>
+<h2>5 Options</h2>
 
 <p>
 --check, -c<br>
@@ -90,7 +90,7 @@ In particular <logo>kryten</logo> is provided <b>"AS IS" WITHOUT WARRANTY OF ANY
 &nbsp; &nbsp; &nbsp; Display the program redistribution conditions and exit.
 
 
-<h2>configuration-file</h2>
+<h2>6 configuration-file</h2>
 
 The configuration-file parameter is the name of the file that defines the PVs to
 be monitored together with match critera and the system command to be called.
@@ -108,13 +108,13 @@ Items in single quotes (') are to be interpreted literally.
 &lt;line&gt; ::= '#' <i>any text</i> &nbsp; | &nbsp; &lt;channel-spec&gt; | &nbsp; &lt;null&gt; &nbsp;
 
 <p>
-&lt;channel-spec&gt; ::= &lt;pv-name&gt; &lt;element-index&gt; &lt;match-list&gt; &lt;command&gt;
+&lt;channel-spec&gt; ::= &lt;pv-name&gt; &lt;element-indicator&gt; &lt;match-list&gt; &lt;command&gt;
 
 <p>
 &lt;pv-name&gt; ::= <i>PV name</i>
 
 <p>
-&lt;element-index&gt; ::= '[' <i>element index</i> ']' &nbsp; | &nbsp; &lt;null&gt;
+&lt;element-indicator&gt; ::= '[' <i>element index</i> ']' &nbsp; | &nbsp; &lt;null&gt;
 
 <p>
 &lt;match-list&gt; ::= &lt;match-item&gt; &nbsp; |&nbsp;  &lt;match-item&gt; '|' &lt;match-list&gt;
@@ -146,6 +146,10 @@ Items in single quotes (') are to be interpreted literally.
 <p>
 &lt;null&gt; ::= <i>blank, empty</i>
 
+<br>
+<br>
+
+<h3>6.1 Primitives</h3>
 
 <h4>PV name</h4>
 The usual EPICS interpretation of a PV name. 
@@ -175,10 +179,10 @@ If a string value requires one or more spaces it must be quoted.
 <br>Note: quoted and unquoted strings (e.g. "Closed" and Closed) semantically
 identical.
 
-<h4>Match List</h4>
+<h3>6.2 Match List</h3>
 Upto 16 match items may be specified.
 
-<h4>Format Converson Parameters</h4>
+<h3>6.3 Format Converson Parameters</h3>
 %p, %e, %m, and %v are format conversion parameters that are expanded prior
 to the system call as follows:
 <p>
@@ -188,7 +192,7 @@ to the system call as follows:
 &nbsp; &nbsp; %e is replaced by the element number.
 <p>
 
-<h3>Configuration file example</h3>
+<h3>6.4 Configuration file example</h3>
 <literal>
 # This is a comment within an example kryten configuration file.
 
@@ -215,7 +219,7 @@ NATURAL:NUMBER   2 ~ 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 27   /bin/echo %v
 
 </literal>
 
-<h2>Operations</h2>
+<h2>7 Operations</h2>
 
 The match item values may be a string, an integer or a real number value.
 The type of the first match value determines the Channel Access request
@@ -264,10 +268,10 @@ script should expect four parameters, namely:
 &nbsp; &nbsp; &nbsp; the current PV value; and <br>
 &nbsp; &nbsp; &nbsp; the element number.
 
-<h2>Release Notes</h2>
+<h2>8 Release Notes</h2>
 Release notes are <a href="release-notes.html">here</a>.
 
-<h2>Trivia</h2>
+<h2>9 Trivia</h2>
 <logo>kryten</logo> is named after Kryten 2X4B 523P out of 
 <literal><font size="4">
 
@@ -277,6 +281,9 @@ Release notes are <a href="release-notes.html">here</a>.
 </font></literal>
 the classic British SciFi series
 <a href="http://www.reddwarf.co.uk">http://www.reddwarf.co.uk</a>.
+<br>
+<br>
+
 
 </body>
 </html>

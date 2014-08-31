@@ -1,13 +1,13 @@
 /* $File: //depot/sw/epics/kryten/gnu_public_licence.c $
- * $Revision: #4 $
- * $DateTime: 2012/03/18 11:25:45 $
+ * $Revision: #5 $
+ * $DateTime: 2013/02/03 17:35:29 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011-2012  Andrew C. Starritt
+ * Copyright (C) 2011-2013  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,9 +38,9 @@
 /*------------------------------------------------------------------------------
  */
 static const char *licence_text =
-    "%skryten%s is distributed under the the GNU General Public License version 3.\n"
+    "%skryten%s is distributed under the GNU General Public License version 3.\n"
     "\n"
-    "Copyright (C) 2011-2012  Andrew C. Starritt\n"
+    "Copyright (C) 2011-2013  Andrew C. Starritt\n"
     "\n"
     "This program is free software: you can redistribute it and/or modify\n"
     "it under the terms of the GNU General Public License as published by\n"
@@ -64,7 +64,7 @@ void Licence ()
 /*------------------------------------------------------------------------------
  */
 static const char *no_warranty_text =
-    "%skryten%s is distributed under the the GNU General Public License version 3.\n"
+    "%skryten%s is distributed under the GNU General Public License version 3.\n"
     "\n"
     "Disclaimer of Warranty.\n"
     "\n"
@@ -85,7 +85,7 @@ void No_Warranty ()
 /*------------------------------------------------------------------------------
  */
 static const char *redistribute_text =
-    "%skryten%s is distributed under the the GNU General Public License version 3.\n"
+    "%skryten%s is distributed under the GNU General Public License version 3.\n"
     "\n"
     "This program is free software: you can redistribute it and/or modify\n"
     "it under the terms of the GNU General Public License as published by\n"

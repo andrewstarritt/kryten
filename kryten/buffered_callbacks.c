@@ -1,6 +1,6 @@
 /* $File: //depot/sw/c/buffered_callbacks.c $
- * $Revision: #2 $
- * $DateTime: 2012/02/28 06:01:47 $
+ * $Revision: #3 $
+ * $DateTime: 2012/07/15 21:09:01 $
  * Last checked in by: $Author: andrew $
  *
  * EPICS buffered callback module for use with Ada, Lazarus and other
@@ -180,7 +180,7 @@ static void load_element (Callback_Items * pci)
 
 
 /*------------------------------------------------------------------------------
- * unload - is NULL of nothing in the list.
+ * unload - is NULL if nothing in the list.
  */
 static Callback_Items *unload_element ()
 {
@@ -261,11 +261,11 @@ int buffered_printf_handler (const char *pformat, va_list args)
       /* Expand string here - it's just easier.
        * It should be done in the libca.so
        */
-      vsprintf (expanded, pformat, args);
+      vsnprintf (expanded, sizeof (expanded), pformat, args);
       va_end (args);
 
-      /* add one for \0 at end */
-
+      /* add one for the terminating \0 at end
+       */
       size = strlen (expanded) + 1;
 
       pci->formatted_text = (char *) malloc (size);

@@ -1,13 +1,13 @@
 /* $File: //depot/sw/epics/kryten/information.c $
- * $Revision: #12 $
- * $DateTime: 2012/05/16 21:51:29 $
+ * $Revision: #13 $
+ * $DateTime: 2013/02/03 17:35:29 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011-2012  Andrew C. Starritt
+ * Copyright (C) 2011-2013  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -191,12 +191,13 @@ static const char *help_text =
     "    %%v is replaced by the current PV value; and\n"
     "    %%e is replaced by the element number.\n"
     "\n"
-    "Configuration file example\n"
+    "Configuration file example (in yellow)\n"
     "%s\n"
     "# This is a comment within an example kryten configuration file. \n"
     "# Monitor beam current and invoke xmessage if current drops below 5mA or \n"
     "# exceeds 205 mA or when the current enters the range 5mA to 205 mA \n"
-    "# Note: we assume the beam current never ever < -1.0e9 or > +1.0e9 \n"
+    "# Note: we assume the beam current never ever < -1.0e9 or > +1.0e9\n"
+    "#       There is no not match syntax (such as !5.0~205.0 yet).\n"
     "#\n"
     "SR11BCM01:CURRENT_MONITOR -1.0e9 ~ 5.0 | 205.0~+1.0e9 /usr/bin/xmessage \n"
     "\n"
@@ -239,7 +240,7 @@ static const char *help_text =
     "the user. If a relative path name is specified, this is relative to the\n"
     "directory in which kryten was started, and not relative to the configuration\n"
     "file. If a path name is not specified, then the usual PATH environment\n"
-    "search rules apply.\n"
+    "variable search rules apply.\n"
     "\n"
     "The program or script is only invoked when the match status changes. If a\n"
     "PV disconnects then the program or script is called with a 'disconnect'\n"
@@ -254,11 +255,14 @@ static const char *help_text =
     "\n"
     "    the PV name,\n"
     "    the match status (i.e. 'match' or 'reject'),\n"
-    "    the current PV value; and\n" "    the element number.\n" "\n";
+    "    the current PV value; and\n"
+    "    the element number.\n" "\n";
 
 static const char *smiley_text =
-    "%skryten%s is named after Kryten 2X4B 523P out of RE%sD D%sWARF, the\n"
-    "classic British SciFi series (http://www.reddwarf.co.uk).\n\n";
+    "%skryten%s is named after Kryten 2X4B 523P out of\n\n"
+    "         RE%sD\n"
+    "        D%sWARF\n\n"
+    "the classic British SciFi series (http://www.reddwarf.co.uk).\n\n";
 
 void Help ()
 {
@@ -276,7 +280,7 @@ void Help ()
 /*------------------------------------------------------------------------------
  */
 static const char *preamble_text =
-    "%skryten%s  Copyright (C) 2011-2012 Andrew C. Starritt\n"
+    "%skryten%s  Copyright (C) 2011-2013 Andrew C. Starritt\n"
     "This program comes with ABSOLUTELY NO WARRANTY, for details run 'kryten --warranty'.\n"
     "This is free software, and you are welcome to redistribute it under certain conditions,\n"
     "run 'kryten --redistribute' for details. Use option -s to suppress this message.\n\n";

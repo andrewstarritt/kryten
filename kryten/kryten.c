@@ -1,13 +1,13 @@
 /* $File: //depot/sw/epics/kryten/kryten.c $
- * $Revision: #16 $
- * $DateTime: 2012/05/16 21:51:29 $
+ * $Revision: #17 $
+ * $DateTime: 2013/02/03 17:35:29 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011-2012  Andrew C. Starritt
+ * Copyright (C) 2011-2013  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,14 +102,14 @@ static bool Run (const char *config_filename,
     */
    status = Create_PV_Client_List (config_filename, &number);
    if (!status) {
-      printf ("%sError%s : PV client list creation failed\n", red, gray);
+      printf ("%sError%s : PV client list creation failed\n", red, reset);
       return false;
    }
 
    if (number == 0) {
       printf
           ("PV client list is %sempty%s - initialing an early shutdown.\n",
-           yellow, gray);
+           yellow, reset);
       return true;
    }
 
@@ -250,7 +250,7 @@ int main (int argc, char *argv[])
 
    status = Run (config_filename, is_just_check, is_daemon);
    if (status) {
-      printf ("%skryten%s complete\n", green, gray);
+      printf ("%skryten%s complete\n", green, reset);
    }
 
    return status ? 0 : 1;
