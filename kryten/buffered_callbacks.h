@@ -1,6 +1,6 @@
-/* $File: //depot/sw/opi/c/buffered_callbacks.h $
- * $Revision: #3 $
- * $DateTime: 2011/05/09 23:29:29 $
+/* $File: //depot/sw/c/buffered_callbacks.h $
+ * $Revision: #1 $
+ * $DateTime: 2012/02/28 04:53:21 $
  * $Author: andrew $
  *
  * EPICS buffered callback module for use with Ada, Lazarus and other

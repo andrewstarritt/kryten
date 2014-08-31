@@ -1,7 +1,7 @@
 /* $File: //depot/sw/epics/kryten/kryten.h $
- * $Revision: #4 $
- * $DateTime: 2011/05/22 15:50:28 $
- * $Author: andrew $
+ * $Revision: #5 $
+ * $DateTime: 2012/02/26 16:06:27 $
+ * Last checked in by: $Author: andrew $
  */
 
 #ifndef KRYTEN_H_

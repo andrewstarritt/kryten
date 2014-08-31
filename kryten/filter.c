@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/filter.c $
- * $Revision: #11 $
- * $DateTime: 2012/02/25 15:42:01 $
+ * $Revision: #12 $
+ * $DateTime: 2012/03/03 23:48:38 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -38,7 +38,47 @@
 
 #define VALUE_IMAGE_SIZE 44
 #define STATE_IMAGE_SIZE 12
-#define INDEX_IMAGE_SIZE  8
+#define INDEX_IMAGE_SIZE 10
+
+#define COMMAND_BUFFER_SIZE (MATCH_COMMAND_LENGTH + MAXIMUM_PVNAME_SIZE + \
+                             STATE_IMAGE_SIZE + VALUE_IMAGE_SIZE +  \
+                             INDEX_IMAGE_SIZE + 12)
+
+/*------------------------------------------------------------------------------
+ */
+static void call_command (CA_Client * pClient, const char *state_image,
+                          const char *value_image)
+{
+   char dnammoc[COMMAND_BUFFER_SIZE];
+   char command[COMMAND_BUFFER_SIZE];
+   char q_val_image[VALUE_IMAGE_SIZE];
+   char index_image[INDEX_IMAGE_SIZE];
+   int status;
+
+   /* Create quotted value and index images.
+    */
+   snprintf (q_val_image, sizeof (q_val_image), "'%s'", value_image);
+   snprintf (index_image, sizeof (index_image), "%d",
+             pClient->element_index);
+
+   substitute (dnammoc, sizeof (dnammoc), pClient->match_command, "%p",
+               pClient->pv_name);
+   substitute (command, sizeof (command), dnammoc, "%e", index_image);
+   substitute (dnammoc, sizeof (dnammoc), command, "%m", state_image);
+   /** We do value last as the value itself may contain %p, %m and or %e.
+    **/
+   substitute (command, sizeof (command), dnammoc, "%v", q_val_image);
+
+   if (is_verbose) {
+      printf ("calling system (\"%s\")\n", command);
+   }
+
+   status = system (command);
+   if (status != 0) {
+      printf ("system (\"%s\") returned %d\n", command, status);
+   }
+}                               /* call_command */
+
 
 /*------------------------------------------------------------------------------
  */
@@ -48,30 +88,6 @@ static bool check_in_range (const Varient_Value * value,
    return Varient_Le (&range->lower, value)
        && Varient_Le (value, &range->upper);
 }                               /* check_in_range */
-
-/*------------------------------------------------------------------------------
- */
-static void call_command (CA_Client * pClient, const char *state_image,
-                          const char *value_image)
-{
-   char command[sizeof (pClient->match_command) +
-                sizeof (pClient->pv_name) + STATE_IMAGE_SIZE +
-                VALUE_IMAGE_SIZE + INDEX_IMAGE_SIZE + 12];
-   int status;
-
-   snprintf (command, sizeof (command), "%s %s '%s' '%s' %d &",
-             pClient->match_command, pClient->pv_name, state_image,
-             value_image, pClient->element_index);
-
-   if (is_verbose) {
-      printf ("calling system (\"%s\")\n", command);
-   }
-   status = system (command);
-   if (status != 0) {
-      printf ("system (\"%s\") returned %d\n", command, status);
-   }
-}                               /* call_command */
-
 
 /*------------------------------------------------------------------------------
  */
@@ -104,7 +120,7 @@ void Process_PV_Update (CA_Client * pClient)
 
       /** PV has entered or exited the matched state
        */
-      state_image = (matches == TRUE) ? "entry" : "exit ";
+      state_image = (matches == TRUE) ? "match " : "reject";
 
       Varient_Image (value_image, sizeof (value_image), &pClient->data);
 

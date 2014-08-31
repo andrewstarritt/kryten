@@ -1,13 +1,13 @@
 /* $File: //depot/sw/epics/kryten/utilities.c $
- * $Revision: #8 $
- * $DateTime: 2012/02/24 23:15:17 $
- * $Author: andrew $
+ * $Revision: #10 $
+ * $DateTime: 2012/02/26 16:10:02 $
+ * Last checked in by: $Author: andrew $
  *
  * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011  Andrew C. Starritt
+ * Copyright (C) 2011-2012  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,13 +27,15 @@
  * PO Box 3118, Prahran East, Victoria 3181, Australia.
  *
  * Source code formatting:
- * indent options:  -kr -pcs -i3 -cli3 -nut
+ * indent options:  -kr -pcs -i3 -cli3 -nbbo -nut
  *
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
+#include <errno.h>
 
 #include "utilities.h"
 
@@ -91,6 +93,220 @@ void check_flag (const char *arg, const char *name1, const char *name2,
    }
 
 }                               /* check_flag */
+
+
+/*------------------------------------------------------------------------------
+ */
+char * extract (char *dest, const size_t n, const char *src, const char *upto)
+{
+   size_t m;
+
+   m = (long) upto - (long) src;
+
+   /* Truncate if necessary - leave room for the trailing '\0'
+    */
+   if (m > n - 1) {
+      m = n - 1;
+   }
+
+   strncpy (dest, src, m);
+   dest [m] = '\0';
+
+   return dest;
+}                               /* extract */
+
+
+/*------------------------------------------------------------------------------
+ */
+char *substitute (char *dest, const size_t n, const char *src,
+                  const char *find, const char *replace)
+{
+   const size_t find_len = strlen (find);
+   const size_t replace_len = strlen (replace);
+
+   char *src_find;
+   char *from;
+   size_t max_room;
+   size_t upto_from_len;
+   size_t copy_len;
+
+
+   if (find_len <= 0) {
+      strncpy (dest, src, n - 1);
+      dest[n - 1] = '\0';
+      return dest;
+   }
+
+   *dest = '\0';
+
+   from = (char *) src;
+   src_find = strstr (from, (char *) find);
+   while (src_find != NULL) {
+
+      max_room = n - 1 - strlen (dest);
+      if (max_room <= 0)
+         break;
+
+      upto_from_len = (size_t) src_find - (size_t) from;
+      copy_len = MIN (max_room, upto_from_len);
+      strncat (dest, from, copy_len);
+
+      max_room = n - 1 - strlen (dest);
+      if (max_room <= 0)
+         break;
+
+      copy_len = MIN (max_room, replace_len);
+      strncat (dest, replace, copy_len);
+
+      /* Move past fins string 
+       */
+      from = src_find + find_len;
+      src_find = strstr (from, (char *) find);
+   }
+
+   max_room = n - 1 - strlen (dest);
+   copy_len = MIN (max_room, strlen (from));
+
+   strncat (dest, from, copy_len);
+   dest[n - 1] = '\0';
+   return dest;
+}                               /* substitute */
+
+
+/*------------------------------------------------------------------------------
+ */
+long long_value (const char *image, bool * status)
+{
+   long result = 0;
+   size_t len;
+   char *end_ptr = NULL;
+   char *read_ptr = NULL;
+
+   /* Ensure not erroneous - hypothesize not successful.
+    */
+   *status = false;
+
+   if (image) {
+
+      len = strlen (image);
+      end_ptr = (char *) image + len;
+      while ((end_ptr > image) && (isspace (end_ptr[-1]))) {
+         end_ptr--;
+      }
+
+      if (end_ptr > image) {
+
+         /* Try decimal number first
+          */
+         errno = 0;
+         result = strtol (image, &read_ptr, 10);
+         /* No error and strtol 'consumed' all the data
+          */
+         if ((errno == 0) && (read_ptr == end_ptr)) {
+            *status = true;
+         } else {
+            /* Try hexdecimal number next
+             */
+            errno = 0;
+            result = strtol (image, &read_ptr, 16);
+            /* No error and strtol 'consumed' all the data
+             */
+            if ((errno == 0) && (read_ptr == end_ptr)) {
+               *status = true;
+            }
+         }
+      }
+   }
+
+   if (!*status) {
+      /* Set default if function failed.
+       */
+      result = 0;
+   }
+
+   return result;
+}                               /* long_value */
+
+/*------------------------------------------------------------------------------
+ */
+double double_value (const char *image, bool * status)
+{
+   double result = 0.0;
+   bool int_status;
+   size_t len;
+   char *end_ptr = NULL;
+   char *read_ptr = NULL;
+
+   /* Ensure not erroneous - hypothesize not successful.
+    */
+   *status = false;
+
+   /* Check if a valid integer - strtod is too slack.
+    */
+   long_value (image, &int_status);
+
+   if (!int_status) {
+
+      /* Check for double
+       */
+      if (image) {
+
+         len = strlen (image);
+         end_ptr = (char *) image + len;
+         while ((end_ptr > image) && (isspace (end_ptr[-1]))) {
+            end_ptr--;
+         }
+
+         if (end_ptr > image) {
+
+            errno = 0;
+            result = strtod (image, &read_ptr);
+
+            /* No error and strtod 'consumed' all the data
+             */
+            if ((errno == 0) && (read_ptr == end_ptr)) {
+               *status = true;
+            }
+         }
+      }
+   }
+
+   if (!*status) {
+      /* Set default if function failed.
+       */
+      result = 0.0;
+   }
+
+   return result;
+}                               /* double_value */
+
+/*------------------------------------------------------------------------------
+ */
+long get_long_env (const char *name, bool * status)
+{
+   long result = 0;
+   char *image;
+
+   /* Ensure not erroneous - hypothesize not successful.
+    */
+   result = 0;
+   *status = false;
+
+   if (name) {
+      image = getenv (name);
+      if (image) {
+         result = long_value (image, status);
+      }
+   }
+
+   if (!*status) {
+      /* Set default if function failed.
+       */
+      result = 0;
+   }
+
+   return result;
+}                               /* get_int_env */
 
 
 /*------------------------------------------------------------------------------

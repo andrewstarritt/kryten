@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/read_configuration.c $
- * $Revision: #10 $
- * $DateTime: 2012/02/25 15:42:01 $
+ * $Revision: #13 $
+ * $DateTime: 2012/03/03 23:48:38 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -32,13 +32,11 @@
  */
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <ctype.h>
-#include <errno.h>
-#include <libgen.h>
 
-#include "pv_client.h"
 #include "read_configuration.h"
+#include "utilities.h"
+
 
 #define MAX_LINE_LENGTH    256
 
@@ -75,74 +73,6 @@ static int debug = 0;
    QUIT_ON_EOL (input);                                               \
 }
 
-/*------------------------------------------------------------------------------
- * Extract sub string from start upto but excluding finish.
- * Returns length of extracted string.
- */
-static int extract (char *into, const int into_size, const char *start,
-                    const char *finish)
-{
-   int n;
-
-   n = (long) finish - (long) start;
-
-   /* Truncate if necessary - leave room for the trailing '\0'
-    */
-   if (n > into_size - 1) {
-      n = into_size - 1;
-   }
-
-   strncpy (into, start, (size_t) n);
-   into[n] = '\0';
-
-   return n;
-}                               /* extract */
-
-
-/*-----------------------------------------------------------------------------
- * The item parameter is assumed tp be trimmed of trailing white space.
- * This function fail returns false if strtod does not consure all of item.
- *
- * Ada's  double'Value ("...") would be really good here.
- */
-static bool scan_double (const char *item, double *number)
-{
-   char *endptr = NULL;
-
-   errno = 0;
-   *number = strtod (item, &endptr);
-   if ((errno == 0) && (endptr == item + strlen (item))) {
-      return true;
-   }
-
-   return false;
-}                               /* scan_double */
-
-/*-----------------------------------------------------------------------------
- * Ditto for long.
- */
-static bool scan_long (const char *item, long *number)
-{
-   char *endptr = NULL;
-
-   /* Try decimal number first
-    */
-   errno = 0;
-   *number = strtol (item, &endptr, 10);
-   if ((errno == 0) && (endptr == item + strlen (item))) {
-      return true;
-   }
-
-   /* Try hexadecimal number next
-    */
-   errno = 0;
-   *number = strtol (item, &endptr, 16);
-   if ((errno == 0) && (endptr == item + strlen (item))) {
-      return true;
-   }
-
-   return false;
-}                               /* scan_long */
 
 /*------------------------------------------------------------------------------
  * Input format is general, e.g.  123, 0x123, 456.67, 32.99e+8, Text, "text".
@@ -156,6 +86,7 @@ static bool scan_value (char *input, Varient_Value * data, char **endptr,
    char *finish;
    char item[MAX_LINE_LENGTH];
    int n;
+   bool status;
 
    /* Ensure not erroneous.
     */
@@ -199,7 +130,8 @@ static bool scan_value (char *input, Varient_Value * data, char **endptr,
 
    /* Extract lexical item into a local copy
     */
-   n = extract (item, sizeof (item), start, finish);
+   extract (item, sizeof (item), start, finish);
+   n = strlen (item);
 
    if (debug) {
       printf ("%s:%d  extracted item %s\n", filename, line_num, item);
@@ -225,14 +157,16 @@ static bool scan_value (char *input, Varient_Value * data, char **endptr,
    }
 
    /* Test for numerical values.
-    * Must test integer first as scan_double will match an integer.
+    * Must test integer first as double_value will match an integer.
     */
-   if (scan_long (item, &data->value.ival)) {
+   data->value.ival = long_value (item, &status);
+   if (status == true) {
       data->kind = vkInteger;
       return true;
    }
 
-   if (scan_double (item, &data->value.dval)) {
+   data->value.dval = double_value (item, &status);
+   if (status == true) {
       data->kind = vkFloating;
       return true;
    }
@@ -260,14 +194,22 @@ bool parse_line (char *line, char *pv_name, int *index,
                  Varient_Range_Collection * pVRC, char *command,
                  const char *filename, const int line_num)
 {
+   static const char *type_mis_match =
+       "%s:%d warning: %s value of sub-match %d is %s, expecting %s.\n";
+
    char *source;
    char *target;
+   char *start;
+   char *finish;
+   char item[MAX_LINE_LENGTH];
    char *endptr;
    bool status;
    int j;
    Varient_Kind expected;
    Varient_Kind lower_kind;
    Varient_Kind upper_kind;
+   bool single_value;
+   bool simple_command;
 
    /* Ensure not erroneous/set defaults.
     */
@@ -305,17 +247,38 @@ bool parse_line (char *line, char *pv_name, int *index,
    SKIP_WHITE_QUIT_ON_EOL (source);
 
    if (*source == '[') {
-      source++;
-      SKIP_WHITE_QUIT_ON_EOL (source);
+      source++;                 /* skip the '['  */
 
-      *index = strtol (source, &endptr, 10);
-      if ((errno != 0) || (endptr == NULL)) {
+      start = source;
+
+      /* Find the ']'
+       */
+      while ((*source != '\0') && (*source != ']')) {
+         source++;
+      }
+
+      if (*source != ']') {
+         printf ("%s:%d error missing ']'\n", filename, line_num);
          return false;
       }
-      source = endptr;
+      finish = source;
+      source++;                 /* skip the ']'  */
+
+      /* Extract lexical item into a local copy
+       */
+      extract (item, sizeof (item), start, finish);
+
+      *index = (int) long_value (item, &status);
+
+      if (status == false) {
+         printf ("%s:%d  index item [%s] is not a valid integer\n",
+                 filename, line_num, item);
+         return false;
+      }
 
       if (debug > 4) {
-         printf ("%s:%d  index = %d\n", filename, line_num, *index);
+         printf ("%s:%d [%s] index = %d\n", filename, line_num, item,
+                 *index);
       }
 
       if (*index < 1) {
@@ -330,14 +293,6 @@ bool parse_line (char *line, char *pv_name, int *index,
       }
 
       SKIP_WHITE_QUIT_ON_EOL (source);
-
-      if (*source == ']') {
-         source++;
-      } else {
-         printf ("%s:%d error missing ']'\n", filename, line_num);
-         return false;
-      }
-
    } else {
       *index = 1;
    }
@@ -365,11 +320,12 @@ bool parse_line (char *line, char *pv_name, int *index,
             return false;
          }
          source = endptr;
-
+         single_value = false;
       } else {
          /* Just set upper value the same as the lower value.
           */
          pVRC->item[j].upper = pVRC->item[j].lower;
+         single_value = true;
       }
 
       /* Update number of valid entries so far
@@ -389,31 +345,18 @@ bool parse_line (char *line, char *pv_name, int *index,
       lower_kind = pVRC->item[j].lower.kind;
       upper_kind = pVRC->item[j].upper.kind;
 
-      if (lower_kind == upper_kind) {
-         /* Okay or generate warning together
-          */
-         if (lower_kind != expected) {
-            printf
-                ("%s:%d warning type mis-match: both values of sub-match %d are %s, expecting %s.\n",
-                 filename, line_num, pVRC->count, vkImage (lower_kind),
-                 vkImage (expected));
-         }
-      } else {
-         /* Never fails for zeroth entry
-          */
-         if (lower_kind != expected) {
-            printf
-                ("%s:%d warning type mis-match: lower value of sub-match %d is %s, expecting %s.\n",
-                 filename, line_num, pVRC->count, vkImage (lower_kind),
-                 vkImage (expected));
-         }
+      /* Never fails for zeroth entry
+       */
+      if (lower_kind != expected) {
+         printf (type_mis_match, filename, line_num,
+                 (single_value ? "the" : "1st"), pVRC->count,
+                 vkImage (lower_kind), vkImage (expected));
+      }
 
-         if (upper_kind != expected) {
-            printf
-                ("%s:%d warning type mis-match: upper value of sub-match %d is %s, expecting %s.\n",
-                 filename, line_num, pVRC->count, vkImage (upper_kind),
-                 vkImage (expected));
-         }
+      if ((!single_value) && (upper_kind != expected)) {
+         printf (type_mis_match, filename, line_num,
+                 "2nd", pVRC->count,
+                 vkImage (upper_kind), vkImage (expected));
       }
 
       if (*source != '|') {
@@ -431,20 +374,38 @@ bool parse_line (char *line, char *pv_name, int *index,
 
    SKIP_WHITE_QUIT_ON_EOL (source);
 
+   simple_command = true;
+
+   /* Copy rest of line to command
+    */
    target = command;
-   while ((*source != '\0') && (isspace (*source) == false)) {
-      *target = *source;
-      source++;
-      target++;
+   while (*source != '\0') {
+      if (isspace (*source) == 0) {
+         /* Not white space - just copy and increment pointers.
+          */
+         *target = *source;
+         source++;
+         target++;
+      } else {
+         SKIP_WHITE_SPACE (source);
+         /* If not end of line then add a sigle space and
+          * flag as non simple command
+          */
+         if (*source != '\0') {
+            *target = ' ';
+            target++;
+            simple_command = false;
+         }
+      }
    }
    *target = '\0';
 
    SKIP_WHITE_SPACE (source);
 
-   if (*source != '\0') {
-      printf
-          ("%s:%d warning trailing input after command %s ignored: %s\n",
-           filename, line_num, command, source);
+   /* Append default parameter spec if simple command
+    */
+   if (simple_command) {
+      strcat (command, " %p %m %v %e");
    }
 
    return true;
@@ -454,7 +415,7 @@ bool parse_line (char *line, char *pv_name, int *index,
 /*------------------------------------------------------------------------------
  */
 bool Scan_Configuration_File (const char *filename,
-                              ELLLIST * ca_client_list)
+                              const Allocate_Client_Handle allocate)
 {
    const char *function = "Scan_Configuration_File";
 
@@ -462,22 +423,19 @@ bool Scan_Configuration_File (const char *filename,
    CA_Client *pClient = NULL;
    int line_num;
    char line[MAX_LINE_LENGTH + 1];
-   int len;
+   /* The extracted pv name can't be longer than the input line.
+    * And the command can have at most 12 characters added to it.
+    */
    char pv_name[MAX_LINE_LENGTH + 1];
+   char command[MAX_LINE_LENGTH + 13];
+   int len;
    int index;
-   char command[MAX_LINE_LENGTH + 1];
    Varient_Range_Collection match_set_collection;
    bool status;
    char *source;
 
-
    if (debug > 0) {
       printf ("%s: entry: filename='%s'.\n", function, filename);
-   }
-
-   if (ca_client_list == NULL) {
-      printf ("%s: null client list\n", function);
-      return false;
    }
 
    /* Attempt to open the specified file.
@@ -515,8 +473,22 @@ bool Scan_Configuration_File (const char *filename,
                            command, filename, line_num);
 
       if (status == false) {
-         /* Any errors already reported - jist print whole line.
+         /* Any errors already reported - just print whole line.
           */
+         printf ("%s:%d %s\n", filename, line_num, line);
+         continue;
+      }
+
+      /* Check sizes
+       */
+      if (strlen (pv_name) > sizeof (pClient->pv_name) - 1) {
+         printf ("%s:%d pv name too long\n", filename, line_num);
+         printf ("%s:%d %s\n", filename, line_num, line);
+         continue;
+      }
+
+      if (strlen (command) > sizeof (pClient->match_command) - 1) {
+         printf ("%s:%d command too long\n", filename, line_num);
          printf ("%s:%d %s\n", filename, line_num, line);
          continue;
       }
@@ -526,16 +498,17 @@ bool Scan_Configuration_File (const char *filename,
                  match_set_collection.count, command);
       }
 
-      pClient = Allocate_Client ();
+      pClient = allocate ();
       if (pClient) {
-         strncpy (pClient->pv_name, pv_name, sizeof (pClient->pv_name));
+         /* Unlike strncpy, snprintf includes tailing '\0'
+          */
+         snprintf (pClient->pv_name, sizeof (pClient->pv_name), "%s",
+                   pv_name);
+         snprintf (pClient->match_command, sizeof (pClient->match_command),
+                   "%s", command);
          pClient->element_index = index;
-         strncpy (pClient->match_command, command, MATCH_COMMAND_LENGTH);
          pClient->match_set_collection = match_set_collection;
 
-         /* Lastly add to client list.
-          */
-         ellAdd (ca_client_list, (ELLNODE *) pClient);
          continue;
       }
 

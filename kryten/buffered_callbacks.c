@@ -1,12 +1,12 @@
-/* $File: //depot/sw/opi/c/buffered_callbacks.c $
- * $Revision: #6 $
- * $DateTime: 2011/05/09 23:29:29 $
- * $Author: andrew $
+/* $File: //depot/sw/c/buffered_callbacks.c $
+ * $Revision: #2 $
+ * $DateTime: 2012/02/28 06:01:47 $
+ * Last checked in by: $Author: andrew $
  *
  * EPICS buffered callback module for use with Ada, Lazarus and other
  * runtime environments which don't like alien threads.
  *
- * Copyright (C) 2005-2011  Andrew C. Starritt
+ * Copyright (C) 2005-2012  Andrew C. Starritt
  *
  * This library is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@ extern void application_printf_handler (char *formatted_text);
 
 /* Buffered stuff kinds 
  */
-typedef enum eCallback_Kinds {
+typedef enum Callback_Kinds {
    NULL_KIND,
    CONNECTION,
    EVENT,
@@ -83,7 +83,7 @@ typedef enum eCallback_Kinds {
 } Callback_Kinds;
 
 
-typedef struct sCallback_Items {
+typedef struct Callback_Items {
    ELLNODE ellnode;
    Callback_Kinds kind;
 
@@ -94,11 +94,41 @@ typedef struct sCallback_Items {
    char *formatted_text;
 } Callback_Items;
 
+
+/*------------------------------------------------------------------------------
+ * Module data
+ */
 static epicsMutexId linked_list_mutex = NULL;
-static ELLLIST linked_list;
+static ELLLIST linked_list = ELLLIST_INIT;
+static unsigned long allocate_fail_count = 0;
 
 
-/* -----------------------------------------------------------------------------
+/*------------------------------------------------------------------------------
+ * Allocate and initialise call back item
+ */
+static Callback_Items *allocate_element (const Callback_Kinds kind)
+{
+   Callback_Items *pci;
+
+   pci = (Callback_Items *) malloc (sizeof (Callback_Items));
+   if (pci) {
+      pci->kind = kind;
+      /* Just do all pointers irrespective of kind
+       */
+      pci->eargs.dbr = NULL;
+      pci->formatted_text = NULL;
+   } else {
+      /* Technically we should protect this with a mutex, but only used
+       * as diagnostic so do not have to be that strict.
+       */
+      allocate_fail_count++;
+   }
+
+   return pci;
+}                               /* allocate_element */
+
+
+/*------------------------------------------------------------------------------
  * free_element - frees all dynamic data associated with this element.
  */
 static void free_element (Callback_Items * pci)
@@ -117,7 +147,6 @@ static void free_element (Callback_Items * pci)
          break;
 
       case PRINTF:
-         /* No special action */
          if (pci->formatted_text) {
             free (pci->formatted_text);
          }
@@ -133,37 +162,37 @@ static void free_element (Callback_Items * pci)
 }                               /* free_element */
 
 
-/* -----------------------------------------------------------------------------
+/*------------------------------------------------------------------------------
  * load  - when no room, item is lost.
  */
 static void load_element (Callback_Items * pci)
 {
-   /* Gain exclusive access to card array
+   /* Gain exclusive access to linked list
     */
    epicsMutexLock (linked_list_mutex);
 
    ellAdd (&linked_list, (ELLNODE *) pci);
 
-   /* Release exclusive access to card array
+   /* Release exclusive access to linked list
     */
    epicsMutexUnlock (linked_list_mutex);
 }                               /* load_element */
 
 
-/* -----------------------------------------------------------------------------
+/*------------------------------------------------------------------------------
  * unload - is NULL of nothing in the list.
  */
 static Callback_Items *unload_element ()
 {
    Callback_Items *result;
 
-   /* Gain exclusive access to card array
+   /* Gain exclusive access to linked list
     */
    epicsMutexLock (linked_list_mutex);
 
    result = (Callback_Items *) ellGet (&linked_list);
 
-   /* Release exclusive access to card array
+   /* Release exclusive access to linked list
     */
    epicsMutexUnlock (linked_list_mutex);
 
@@ -171,25 +200,25 @@ static Callback_Items *unload_element ()
 }                               /* unload_element */
 
 
-
-/* -----------------------------------------------------------------------------
+/*------------------------------------------------------------------------------
  * Connection handler
  */
 void buffered_connection_handler (struct connection_handler_args args)
 {
    Callback_Items *pci;
 
-   pci = (Callback_Items *) malloc (sizeof (Callback_Items));
-   pci->kind = CONNECTION;
+   pci = allocate_element (CONNECTION);
+   if (pci) {
 
-   /* Copy all fields. */
-   pci->cargs = args;
+      /* Copy all fields. */
+      pci->cargs = args;
 
-   load_element (pci);
+      load_element (pci);
+   }
 }                               /* buffered_connection_handler */
 
 
-/* -----------------------------------------------------------------------------
+/*------------------------------------------------------------------------------
  * Event handler
  */
 void buffered_event_handler (struct event_handler_args args)
@@ -197,25 +226,26 @@ void buffered_event_handler (struct event_handler_args args)
    Callback_Items *pci;
    size_t size;
 
-   pci = (Callback_Items *) malloc (sizeof (Callback_Items));
-   pci->kind = EVENT;
+   pci = allocate_element (EVENT);
+   if (pci) {
 
-   /* Copy all fields. */
-   pci->eargs = args;
+      /* Copy all fields. */
+      pci->eargs = args;
 
-   /* Calculate size of dbr field, and alloc memory for copy iff required
-    */
-   if (args.dbr != NULL) {
-      size = dbr_size_n (args.type, args.count);
-      pci->eargs.dbr = malloc (size);
-      memcpy ((void *) pci->eargs.dbr, args.dbr, size);
+      /* Calculate size of dbr field, and alloc memory for copy iff required
+       */
+      if (args.dbr != NULL) {
+         size = dbr_size_n (args.type, args.count);
+         pci->eargs.dbr = malloc (size);
+         memcpy ((void *) pci->eargs.dbr, args.dbr, size);
+      }
+
+      load_element (pci);
    }
-
-   load_element (pci);
 }                               /* buffered_event_handler */
 
 
-/* -----------------------------------------------------------------------------
+/*------------------------------------------------------------------------------
  * Replacement printf handler
  */
 int buffered_printf_handler (const char *pformat, va_list args)
@@ -225,40 +255,43 @@ int buffered_printf_handler (const char *pformat, va_list args)
    char expanded[400];
    size_t size;
 
-   pci = (Callback_Items *) malloc (sizeof (Callback_Items));
-   pci->kind = PRINTF;
+   pci = allocate_element (PRINTF);
+   if (pci) {
 
-   /* Expand string here - it's just easier.
-    * It should be done in the libca.so
-    */
-   vsprintf (expanded, pformat, args);
-   va_end (args);
+      /* Expand string here - it's just easier.
+       * It should be done in the libca.so
+       */
+      vsprintf (expanded, pformat, args);
+      va_end (args);
 
-   /* add one for \0 at end */
+      /* add one for \0 at end */
 
-   size = strlen (expanded) + 1;
+      size = strlen (expanded) + 1;
 
-   pci->formatted_text = (char *) malloc (size);
+      pci->formatted_text = (char *) malloc (size);
 
-   /* Copy expanded string 
-    */
-   memcpy ((void *) pci->formatted_text, &expanded, size);
+      /* Copy expanded string 
+       */
+      memcpy ((void *) pci->formatted_text, &expanded, size);
 
-   load_element (pci);
+      load_element (pci);
 
+   }
    return ECA_NORMAL;
 }                               /* buffered_printf_handler */
 
 
-/* -----------------------------------------------------------------------------
+/*------------------------------------------------------------------------------
  */
 void initialise_buffered_callbacks ()
 {
    linked_list_mutex = epicsMutexCreate ();
    ellInit (&linked_list);
+   allocate_fail_count = 0;
 }                               /* initialise_buffered_callbacks */
 
-/* -----------------------------------------------------------------------------
+
+/*------------------------------------------------------------------------------
  */
 int number_of_buffered_callbacks ()
 {
@@ -267,7 +300,8 @@ int number_of_buffered_callbacks ()
    return n;
 }                               /* number_of_buffered_callbacks */
 
-/* -----------------------------------------------------------------------------
+
+/*------------------------------------------------------------------------------
  * Process callbacks - called from application thread.
  */
 int process_buffered_callbacks (const int max)
@@ -275,11 +309,16 @@ int process_buffered_callbacks (const int max)
    Callback_Items *pci;
    int n;
 
+   if (allocate_fail_count > 0) {
+      fprintf (stderr, "*** %s: Allocation failures (%ld) \n",
+               __FUNCTION__, allocate_fail_count);
+      allocate_fail_count = 0;
+   }
+
    n = 0;
    while (1) {
 
       pci = unload_element ();
-
       if (pci == NULL) {
          break;
       }
@@ -299,20 +338,22 @@ int process_buffered_callbacks (const int max)
             break;
 
          default:
-            fprintf (stderr, "*** Unexpected callback kind: %d \n",
-                     pci->kind);
+            fprintf (stderr, "*** %s: Unexpected callback kind: %d \n",
+                     __FUNCTION__, pci->kind);
             break;
       }
 
-      /* Free element 
+      /* Free element
        */
       free_element (pci);
 
+      /* Increment counter and test. Test at end of loop in order to process
+       * at least one item (if available) regardless of the value of max.
+       */
       n++;
       if (n >= max) {
          break;
       }
-
    }                            /* end loop */
 
    return n;

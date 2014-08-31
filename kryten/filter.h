@@ -1,7 +1,7 @@
 /* $File: //depot/sw/epics/kryten/filter.h $
- * $Revision: #3 $
- * $DateTime: 2012/02/04 09:44:25 $
- * $Author: andrew $
+ * $Revision: #4 $
+ * $DateTime: 2012/02/26 16:06:27 $
+ * Last checked in by: $Author: andrew $
  */
 
 #ifndef PV_FILTER_H_

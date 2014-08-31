@@ -1,7 +1,7 @@
 /* $File: //depot/sw/epics/kryten/pv_client.h $
- * $Revision: #10 $
- * $DateTime: 2012/02/24 23:15:17 $
- * $Author: andrew $
+ * $Revision: #13 $
+ * $DateTime: 2012/03/03 23:48:38 $
+ * Last checked in by: $Author: andrew $
  */
 
 #ifndef PV_CLIENT_H_
@@ -21,6 +21,7 @@
  */
 #define CA_CLIENT_MAGIC   0xEB1C5314
 
+#define MAXIMUM_PVNAME_SIZE        80
 #define NUMBER_OF_VARIENT_RANGES   16
 #define MATCH_COMMAND_LENGTH      120
 
@@ -43,7 +44,7 @@ struct sCA_Client {
 
    /* Channel Access connection info
     */
-   char pv_name[80];
+   char pv_name[MAXIMUM_PVNAME_SIZE];
    int element_index;
    chid channel_id;
    evid event_id;
@@ -70,6 +71,7 @@ struct sCA_Client {
 
    /* Per update channel information.
     */
+   bool is_connected;
    bool is_first_update;
    long int data_element_count; /* number of elements received */
 
@@ -96,7 +98,7 @@ typedef struct sCA_Client CA_Client;
  */
 typedef bool (*Bool_Function_Handle) ();
 
-CA_Client *Allocate_Client ();
+typedef CA_Client *(*Allocate_Client_Handle) ();
 
 bool Create_PV_Client_List (const char *pv_list_filename, int *number);
 

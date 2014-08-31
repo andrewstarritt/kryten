@@ -1,6 +1,6 @@
 <!-- $File: //depot/sw/epics/kryten/documentation/release-notes.html $ -->
-<!-- $Revision: #2 $ -->
-<!-- $DateTime: 2012/02/25 15:42:01 $ -->
+<!-- $Revision: #3 $ -->
+<!-- $DateTime: 2012/03/04 14:13:02 $ -->
 <!-- Last checked in by: $Author: andrew $ -->
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -19,14 +19,38 @@
 
 </head>
 
-<body  bgcolor="#FFF0E0" text="#201000" >
+<body  bgcolor="#FFF0E0" text="#201000"
+       link="#0000FF"    vlink="#E000E0"  alink="#FF0000" >
+
+<h1>Release Notes</h1>
+
+<h2>kryten-2.1.3</h2>
+The specified command may now be given optional arbtary parameters.
+These include the format convertion characters %p, %e, %m and %v
+corresponding to PV name, element index, match status and value respectively.
+
+<p>
+The match status is now 'match'/'reject' - was previously 'entry'/'exit'.
+
+<p>
+Revamped the kryten.html documentation file.
+
+<p>
+After 2 seconds <logo>kryten</logo> now issues connection timeout messages
+for any channel that is not connected.
+
+<p>
+The format of some warning messages have been modified (essentially cosmetic).
+
+<p>
+Internal code re-organisation/rationalisation.
 
 <h2>kryten-2.1.2</h2>
 
 <logo>kryten</logo> terminates if the configuration file does not specify any PVs.
 
 <p>
-In verbose mode <logo>kryten</logo> outputs its interpretation of the configuration.
+In verbose mode <logo>kryten</logo> outputs its interpretation of the configuration file.
 
 <p>
 This version is more tolerant when parsing te configuration file.
@@ -38,7 +62,7 @@ White space is now allowed between the sub-fields of the match criteria.
 #                                v  v   v v    v v
 SR11BCM01:LIFETIME_MONITOR   -1.0 ~  5.0 | 50.0 ~ 100.0    echo
 
-# Whereas previosly had to be like this:
+# Whereas previously had to be like this:
 #
 SR11BCM01:LIFETIME_MONITOR   -1.0~5.0|50.0~100.0           echo
 
@@ -47,12 +71,13 @@ SR11BCM01:LIFETIME_MONITOR   -1.0~5.0|50.0~100.0           echo
 
 <p>
 An optional index values may now be specified (for waveform and other array PVs).
-The default is 1, the first element (<logo>kryten</logo> numbers array elements from 1 to N as oppossed to C style 0 to N-1).
-If there are less elements in the array than the specified index value then the PV is ignored.
+The default is [1], which specifies the first element 
+(<logo>kryten</logo> numbers array elements from 1 to N as oppossed to the C style 0 to N-1).
+If there are less elements in the array than the specified index value then the PV is ignored.<br>
 Example:
 <literal>
 
-# Monior the third element of the array for being prime less than 32.
+# Monior the third element of the array for being a prime less than 32.
 #
 SOME_WAVEFORM:ARRAY [3]   2 ~ 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 31  /home/user/bin/prime.sh
 </literal>
@@ -61,7 +86,7 @@ SOME_WAVEFORM:ARRAY [3]   2 ~ 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 31  /home/use
 The command script or program should now expect four parameters - the (new) 4th parameter is
 the element index.
 <p>
-Created this Release Notes files.
+Created this Release Notes file.
 
 <h2>kryten-2.1.1</h2>
 

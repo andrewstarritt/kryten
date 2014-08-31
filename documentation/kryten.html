@@ -1,12 +1,13 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 <!-- $File: //depot/sw/epics/kryten/documentation/kryten.html $ -->
-<!-- $Revision: #5 $ -->
-<!-- $DateTime: 2012/02/25 15:42:01 $ -->
+<!-- $Revision: #7 $ -->
+<!-- $DateTime: 2012/03/04 14:13:02 $ -->
 <!-- Last checked in by: $Author: andrew $ -->
 
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
 <head>
-<title>kryten version: 2.1.1</title>
+<title>kryten version: 2.1.3</title>
 
 <style type ="text/css">
    logo     { color : #00C000 ; }
@@ -19,11 +20,14 @@
 
 </head>
 
-<body  bgcolor="#FFF0E0" text="#201000" >
+<body  bgcolor="#FFF0E0" text="#201000"
+       link="#0000FF"    vlink="#E000E0"  alink="#FF0000" >
+
+<h1>kryten 2.1.3</h1>
 
 <h2>Introduction</h2>
 
-<logo>kryten</logo> is an EPICS extention that allows
+<logo>kryten</logo> is a command line EPICS extention that allows
 an arbitary set of Channel Access Process Variables&nbsp;(PVs) to be monitored;
 and if the monitored values starts to match or ceases to match the specified
 criteria it then invokes the specified system command.
@@ -31,20 +35,20 @@ criteria it then invokes the specified system command.
 <h2>License</h2>
 
 <logo>kryten</logo> is distributed under the GNU General Public
-<a href="http://www.gnu.org/licenses/gpl.html">License</a> version 3.
+<a href="http://www.gnu.org/licenses/gpl-3.0-standalone.html">License</a> version 3.
 <p>
 In particular <logo>kryten</logo> is provided <b>"AS IS" WITHOUT WARRANTY OF ANY KIND</b>.
 
+<h2>Platform</h2>
+<logo>kryten</logo> was developed on and for Linux.
 
 <h2>Usage</h2>
-<literal>
-   usage: kryten  [OPTIONS]  configuration-file
+<literal>   usage: kryten  [OPTIONS]  configuration-file
           kryten  --help | -h
           kryten  --version
           kryten  --licence | -l
           kryten  --warranty | -w
           kryten  --redistribute | -r
-
 </literal>
 
 <h2>Options</h2>
@@ -86,38 +90,137 @@ In particular <logo>kryten</logo> is provided <b>"AS IS" WITHOUT WARRANTY OF ANY
 &nbsp; &nbsp; &nbsp; Display the program redistribution conditions and exit.
 
 
-<h2>Parameters</h2>
+<h2>configuration-file</h2>
 
-<h3>configuration-file</h3>
-
-<p>
-This paramener specifies the file that defines the PVs to be monitored together
-with match critera and the system command to be called.
+The configuration-file parameter is the name of the file that defines the PVs to
+be monitored together with match critera and the system command to be called.
 
 <p>
-The expected file format is as follows. Blank lines and lines starting
-with a # character are ignored, the later being useful for comments.
-Otherwise the line consists of fields. Fields are separated by white
-space (spaces and/or tabs) with optional leading and tailing white space.
-
-<h4>Field 1</h4>
-The first field is the PV name. 
-For waveform records and other array PVs, the PV name may be immediately 
-followed by an array element number enclosed in square brackets. 
-The default is '[1]'.<br>
-Note: <logo>kryten</logo> array indexing starts from 1.
-
-<h4>Field 2</h4>
-The second field is the match criteria. This consists of upto 16 sub
--match criteria seprated by a | character. Each sub field consists of
-a single value or a pair of values, sepratated by a ~ character, that
-specifies an inclusive range of match values.
+The expected file format is described below using a
+<a href="http://en.wikipedia.org/wiki/Backus%E2%80%93Naur_Form">Backus Naur</a>
+like syntax.
+Blank lines and lines starting with a # character are ignored, the later being useful for comments.
+Items in <i>italics</i> are primitives and are defined after the syntax.
+Items in single quotes (') are to be interpreted literally.
+<br>
+<br>
+<p>
+&lt;line&gt; ::= '#' <i>any text</i> &nbsp; | &nbsp; &lt;channel-spec&gt; | &nbsp; &lt;null&gt; &nbsp;
 
 <p>
-The values may be a string, an integer or a floating value. The type of
-the first match value determines the Channel Access request field type:
+&lt;channel-spec&gt; ::= &lt;pv-name&gt; &lt;element-index&gt; &lt;match-list&gt; &lt;command&gt;
+
+<p>
+&lt;pv-name&gt; ::= <i>PV name</i>
+
+<p>
+&lt;element-index&gt; ::= '[' <i>element index</i> ']' &nbsp; | &nbsp; &lt;null&gt;
+
+<p>
+&lt;match-list&gt; ::= &lt;match-item&gt; &nbsp; |&nbsp;  &lt;match-item&gt; '|' &lt;match-list&gt;
+
+<p>
+&lt;match-item&gt; ::= &lt;value&gt; &nbsp; |&nbsp; &lt;value&gt; '~' &lt;value&gt;
+
+<p>
+&lt;value&gt; ::= <i>integer</i> &nbsp; |&nbsp; <i>real number</i> &nbsp; |&nbsp; &lt;string-value&gt;
+
+<p>
+&lt;string-value&gt; ::= <i>unquoted string</i> &nbsp; | &nbsp; <i>'"'any text'"'</i>
+
+<p>
+&lt;command&gt; ::= &lt;simple-command&gt; &nbsp; | &nbsp; &lt;elaborate-command&gt;
+
+<p>
+&lt;simple-command&gt; ::= <i>basic command, no parameters</i>
+
+<p>
+&lt;elaborate-command&gt; ::= &lt;simple-command&gt; &lt;parameters&gt;
+
+<p>
+&lt;parameters&gt; ::= &lt;parameter&gt; &nbsp; | &nbsp;  &lt;parameter&gt; &lt;parameters&gt;
+
+<p>
+&lt;parameter&gt; ::= <i>any text</i> &nbsp; | &nbsp; '%p' | &nbsp; '%e' | &nbsp; '%m' | &nbsp; '%v'
+
+<p>
+&lt;null&gt; ::= <i>blank, empty</i>
+
+
+<h4>PV name</h4>
+The usual EPICS interpretation of a PV name. 
+The PV name may include an optional record field name (e.g.&nbsp;.SEVR).
+<p>
+As of yet, <logo>kryten</logo> does not understand long strings applicable when
+the PV name end with a&nbsp;'$'.
+
+<h4>Integer</h4>
+Any integer number. Hexadecimal numbers (e.g. 0xCAFE) also accepted.
+
+<h4>Element Index</h4>
+For waveform records and other array PVs an element index may be specified.
+When specified, the element index must be a positive integer.
+When not specified the default is 1.
+<br>Note: <logo>kryten</logo> array indexing starts from&nbsp;1.
+
+<h4>Real Number</h4>
+Any real number, i.e.&nbsp;a fixed point numbers or a floating point number.
+A real number specifically excludes items that are also integer,
+e.g.&nbsp;4.0 is a real number, 4 is an integer.
+
+<h4>Unquoted String</h4>
+Any text that does not contain white space and is neither an integer nor a
+real number is interpreted as an unquoted string.
+If a string value requires one or more spaces it must be quoted.
+<br>Note: quoted and unquoted (e.g. "Red" and Red) semantically identical. 
+
+<h4>Match List</h4>
+Upto 16 match items may be specified.
+
+<h4>Format Converson Parameters</h4>
+%p, %e, %m, and %v are format conversion parameters that are expanded prior
+to the system call as follows:
+<p>
+&nbsp; &nbsp; %p is replaced by the PV name,<br>
+&nbsp; &nbsp; %m is replaced by the match status (i.e. 'match', 'reject' or 'disconnect'),<br>
+&nbsp; &nbsp; %v is replaced by the current PV value; and <br>
+&nbsp; &nbsp; %e is replaced by the element number.
+<p>
+
+<h3>Configuration file example</h3>
 <literal>
+# This is a comment within an example kryten configuration file.
 
+# Monitor beam current and invoke xmessage if current drops below 5mA or
+# exceeds 205 mA or when the current enters the range 5mA to 205 mA
+# Note: we assume the beam current never ever < -1.0e9 or > +1.0e9
+#
+SR11BCM01:CURRENT_MONITOR   -1.0e9 ~ 5.0 | 205.0~+1.0e9   /usr/bin/xmessage
+
+# Monitor the rainbow status and invoke echo when status becomes Green or Orange
+# or when the status ceases to be neither Green nor Orange.
+#
+RAINBOW:STATUS              "Green" | "Orange"            /bin/echo
+
+# Monitor 3rd element of waveform record for value being 199
+#
+WAVEFORM:ARRAY [3]           199                          /bin/echo
+
+# Monitor for prime numbers - just echo value
+#
+NATURAL:NUMBER   2 ~ 3 | 5 | 7 | 11 | 13 | 17 | 19 | 23 | 27   /bin/echo %v
+
+# end
+
+</literal>
+
+<h2>Operations</h2>
+
+The match item values may be a string, an integer or a real number value.
+The type of the first match value determines the Channel Access request
+field type:
+<br>
+<literal>
    String    DBF_STRING
    Integer   DBF_LONG
    Floating  DBF_DOUBLE
@@ -136,59 +239,34 @@ the value in double quotes ("). String values containing white space
 must be enclosed in double quotes. For string matches, the case is
 significant.
 
-<h4>Field 3</h4>
-The third field is any program or script that is normally available to
-the user. If a relative path name is specified, this is relative to the
-directory in which <logo>kryten</logo> was started, and not relative
-to the configuration file.
+The specified program or script must be one that is normally available to
+the user.
+If a relative path name is specified, this is relative to the directory in
+which <logo>kryten</logo> was started, and not relative to the configuration
+file.
 If a path name is not specified, then the usual PATH environment search
 rules apply.
-
-<p>
-The program or script should expect four parameters, namely:
-<p>
-&nbsp; &nbsp; &nbsp; the PV name,<br>
-&nbsp; &nbsp; &nbsp; the match status (i.e. 'entry' or 'exit'),<br>
-&nbsp; &nbsp; &nbsp; the current PV value; and <br>
-&nbsp; &nbsp; &nbsp; the element number.
 <p>
 The program or script is only invoked when the match status changes.
 If a PV disconnects then the program or script is called with a 
 'disconnect' status and the value parameter is an empty string.
-
 <p>
 The program or script is run in background mode, and therefore it will run
 asynchronously. It is the user's responsibility to manage the interactions
 between any asynchronous processes.
+<p>
+When a basic command, i.e. no parameters, is specified, then the program or
+script should expect four parameters, namely:
+<p>
+&nbsp; &nbsp; &nbsp; the PV name,<br>
+&nbsp; &nbsp; &nbsp; the match status (i.e. 'match' or 'reject'),<br>
+&nbsp; &nbsp; &nbsp; the current PV value; and <br>
+&nbsp; &nbsp; &nbsp; the element number.
 
-
-<h3>Configuration file example</h3>
-
-<literal>
-# This is a comment within an example kryten configuration file.
-
-# Monitor beam current and invoke xmessage if current drops below 5mA or
-# exceeds 205 mA or when the current enters the range 5mA to 205 mA
-# Note: we assume the beam current never ever < -1.0e9 or > +1.0e9
-#
-SR11BCM01:CURRENT_MONITOR   -1.0e9 ~ 5.0 | 205.0~+1.0e9   /usr/bin/xmessage
-
-# Monitor the rainbow status and invoke echo when status becomes Green or Orange
-# or when the status ceases to be neither Green nor Orange.
-#
-RAINDOW:STATUS              "Green" | "Orange"            /bin/echo
-
-# Monitor 3rd element of waveform record for value being 199 or otherwise
-#
-WAVEFORM:ARRAY [3]           199                          /bin/echo
-
-# end
-
-</literal>
-
+<h2>Release Notes</h2>
+Release notes are <a href="release-notes.html">here</a>.
 
 <h2>Trivia</h2>
-<p>
 <logo>kryten</logo> is named after Kryten 2X4B 523P out of 
 <literal><font size="4">
 

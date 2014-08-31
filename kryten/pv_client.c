@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/pv_client.c $
- * $Revision: #15 $
- * $DateTime: 2012/02/25 15:42:01 $
+ * $Revision: #18 $
+ * $DateTime: 2012/03/03 23:48:38 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -86,6 +86,7 @@ static void Create_Channel (CA_Client * pClient)
 {
    int status;
 
+   pClient->is_connected = false;
    status = ca_create_channel
        (pClient->pv_name, buffered_connection_handler,
         pClient, 10, &pClient->channel_id);
@@ -281,7 +282,7 @@ static void Get_Event_Handler (CA_Client * pClient,
 
    /* Get number of elements.
     */
-   number = max (0, args->count);
+   number = MAX (0, args->count);
 
    if (number < pClient->element_index) {
       printf
@@ -490,6 +491,7 @@ static void Clear_Channel (CA_Client * pClient)
       }
 
       pClient->channel_id = NULL;
+      pClient->is_connected = false;
    }
 }                               /* Clear_Channel */
 
@@ -555,6 +557,7 @@ void application_connection_handler (struct connection_handler_args *args)
             if (debug >= 4) {
                printf ("PV connected %s\n", pClient->pv_name);
             }
+            pClient->is_connected = true;
             pClient->field_type = ca_field_type (pClient->channel_id);
             pClient->element_count =
                 ca_element_count (pClient->channel_id);
@@ -643,6 +646,81 @@ void application_printf_handler (char *formated_text)
 
 
 /*------------------------------------------------------------------------------
+ */
+void Print_Match_Information (CA_Client * pClient)
+{
+   unsigned int j;
+   Varient_Kind kind;
+   char *request;
+   Varient_Range *pVR;
+   char lower[45];
+   char upper[45];
+   char *lq, *uq;
+
+   kind = pClient->match_set_collection.item[0].lower.kind;
+   switch (kind) {
+
+      case vkString:
+         request = "DBF_STRING";
+         break;
+
+      case vkInteger:
+         request = "DBF_LONG";
+         break;
+
+      case vkFloating:
+         request = "DBF_DOUBLE";
+         break;
+
+      default:
+         request = "NONE";
+         break;
+   }
+
+   printf ("PV Name: %s [%d]\n", pClient->pv_name, pClient->element_index);
+
+   printf ("Request: %s\n", request);
+
+   printf ("Command: %s\n", pClient->match_command);
+
+   for (j = 0; j < pClient->match_set_collection.count; j++) {
+      if (j == 0) {
+         printf ("Matches: ");
+      } else {
+         printf ("     or: ");
+      }
+
+      pVR = &pClient->match_set_collection.item[j];
+
+      Varient_Image (lower, sizeof (lower), &pVR->lower);
+      lq = (pVR->lower.kind == vkString) ? "\"" : "";
+
+      Varient_Image (upper, sizeof (upper), &pVR->upper);
+      uq = (pVR->upper.kind == vkString) ? "\"" : "";
+
+      printf ("%s%s%s", lq, lower, lq);
+      if (Varient_Same (&pVR->lower, &pVR->upper) == false) {
+         printf (" to %s%s%s", uq, upper, uq);
+      }
+      printf ("\n");
+
+   }
+   printf ("\n");
+}                               /* Print_Match_Information */
+
+
+/*------------------------------------------------------------------------------
+ */
+void Print_Connection_Timeout (CA_Client * pClient)
+{
+   if (pClient->is_connected != true) {
+      printf ("Channel connect timed out: '%s' not found.\n",
+              pClient->pv_name);
+   }
+}                               /* Print_Connection_Timeout */
+
+
+/*------------------------------------------------------------------------------
  * CLIENT LIST functions
  *------------------------------------------------------------------------------
  */
@@ -671,10 +749,37 @@ static void Clear_All_Channels (ELLLIST * CA_Client_List)
       /* Close this Channel Access channel
        */
       Clear_Channel (pClient);
-
       pClient = (CA_Client *) ellNext ((ELLNODE *) pClient);
    }
 }                               /* Clear_All_Channels */
+
+
+/*------------------------------------------------------------------------------
+ */
+static void Print_All_Match_Information (ELLLIST * CA_Client_List)
+{
+   CA_Client *pClient;
+
+   pClient = (CA_Client *) ellFirst (CA_Client_List);
+   while (pClient) {
+      Print_Match_Information (pClient);
+      pClient = (CA_Client *) ellNext ((ELLNODE *) pClient);
+   }
+}                               /* Print_All_Client_Information */
+
+
+/*------------------------------------------------------------------------------
+ */
+static void Print_All_Connection_Timeouts (ELLLIST * CA_Client_List)
+{
+   CA_Client *pClient;
+
+   pClient = (CA_Client *) ellFirst (CA_Client_List);
+   while (pClient) {
+      Print_Connection_Timeout (pClient);
+      pClient = (CA_Client *) ellNext ((ELLNODE *) pClient);
+   }
+}                               /* Verify_All_Clients_Are_Connected */
 
 
 /*------------------------------------------------------------------------------
@@ -685,8 +790,6 @@ static ELLLIST CA_Client_List = ELLLIST_INIT;
 
 
 /*------------------------------------------------------------------------------
- * PUBLIC FUNCTIONS
- *------------------------------------------------------------------------------
  */
 CA_Client *Allocate_Client ()
 {
@@ -697,17 +800,24 @@ CA_Client *Allocate_Client ()
 
    result->magic1 = CA_CLIENT_MAGIC;
    result->magic2 = CA_CLIENT_MAGIC;
+   result->is_connected = false;
    result->channel_id = NULL;
    result->event_id = NULL;
    result->pv_name[0] = '\0';
    result->match_set_collection.count = 0;
    result->match_command[0] = '\0';
 
+   /* Lastly add to client list.
+    */
+   ellAdd (&CA_Client_List, (ELLNODE *) result);
+
    return result;
 }                               /* Allocate_Client */
 
 
 /*------------------------------------------------------------------------------
+ * PUBLIC FUNCTIONS
+ *------------------------------------------------------------------------------
  */
 bool Create_PV_Client_List (const char *pv_list_filename, int *number)
 {
@@ -718,7 +828,7 @@ bool Create_PV_Client_List (const char *pv_list_filename, int *number)
     */
    ellInit (&CA_Client_List);
 
-   result = Scan_Configuration_File (pv_list_filename, &CA_Client_List);
+   result = Scan_Configuration_File (pv_list_filename, &Allocate_Client);
 
    n = ellCount (&CA_Client_List);
    printf ("PV client list created - %d %s.\n", n,
@@ -728,78 +838,15 @@ bool Create_PV_Client_List (const char *pv_list_filename, int *number)
    return result;
 }                               /* Create_PV_Client_List */
 
+
 /*------------------------------------------------------------------------------
  */
 void Print_Clients_Info ()
 {
-   CA_Client *pClient;
-   unsigned int j;
-   Varient_Kind kind;
-   char *request;
-   Varient_Range *pVR;
-   char lower[45];
-   char upper[45];
-   char *lq, *uq;
-
    printf ("\n");
-   pClient = (CA_Client *) ellFirst (&CA_Client_List);
-   while (pClient) {
-
-      kind = pClient->match_set_collection.item[0].lower.kind;
-      switch (kind) {
-
-         case vkString:
-            request = "DBF_STRING";
-            break;
-
-         case vkInteger:
-            request = "DBF_LONG";
-            break;
-
-         case vkFloating:
-            request = "DBF_DOUBLE";
-            break;
-
-         default:
-            request = "NONE";
-            break;
-      }
-
-      printf ("PV Name: %s [%d]\n", pClient->pv_name,
-              pClient->element_index);
-
-      printf ("Request: %s\n", request);
-
-      printf ("Command: %s\n", pClient->match_command);
-
-      for (j = 0; j < pClient->match_set_collection.count; j++) {
-         if (j == 0) {
-            printf ("Matches: ");
-         } else {
-            printf ("     or: ");
-         }
-
-         pVR = &pClient->match_set_collection.item[j];
-
-         Varient_Image (lower, sizeof (lower), &pVR->lower);
-         lq = (pVR->lower.kind == vkString) ? "\"" : "";
-
-         Varient_Image (upper, sizeof (upper), &pVR->upper);
-         uq = (pVR->upper.kind == vkString) ? "\"" : "";
-
-         printf ("%s%s%s", lq, lower, lq);
-         if (Varient_Same (&pVR->lower, &pVR->upper) == false) {
-            printf (" to %s%s%s", uq, upper, uq);
-         }
-         printf ("\n");
-
-      }
-      printf ("\n");
-
-      pClient = (CA_Client *) ellNext ((ELLNODE *) pClient);
-   }
-
+   Print_All_Match_Information (&CA_Client_List);
 }                               /* Print_Clients_Info */
+
 
 /*------------------------------------------------------------------------------
  */
@@ -808,10 +855,13 @@ bool Process_Clients (Bool_Function_Handle shut_down)
    const int maximum = 400;     /* maximum items processed at one time */
    const double delay = 0.05;   /* delay between processing burst */
 
+   bool connection_timouts_are_done;
    int status;
    int p;
+/*
    static long last_time;
-/*   static long this_time;  */
+   static long this_time;
+*/
 
    initialise_buffered_callbacks ();
 
@@ -839,8 +889,8 @@ bool Process_Clients (Bool_Function_Handle shut_down)
    Create_All_Channels (&CA_Client_List);
 
    start_time = ((long) time (NULL));
-   last_time = start_time;
 
+   connection_timouts_are_done = false;
    cycle = 0;
    while ((*shut_down) () == false) {
       cycle++;
@@ -850,6 +900,15 @@ bool Process_Clients (Bool_Function_Handle shut_down)
          printf ("ca_flush_io failed (%s)\n", ca_message (status));
       }
       p = process_buffered_callbacks (maximum);
+
+      /* Allow channels 2 seconds to connect before we test for
+       * connection timeouts.
+       */
+      if ((connection_timouts_are_done == false) &&
+          ((cycle * delay) >= 2.0)) {
+         Print_All_Connection_Timeouts (&CA_Client_List);
+         connection_timouts_are_done = true;
+      }
 
       /** TODO Maybe ??
       this_time = ((long) time (NULL));
