@@ -1,0 +1,185 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head>
+<title>kryten version: 2.1.1</title>
+
+<style type ="text/css">
+   logo     { color : #00C000 ; }
+   red      { color : #FF0000 ; }
+   literal  { white-space: pre;
+              font-family : "courier new";
+              font-size : 14 ; }
+</style>
+
+</head>
+
+<body  bgcolor="#FFE8D0" text="#000060" >
+
+<h2>Introduction</h2>
+
+<logo>kryten</logo> is an EPICS extention that allows
+an arbitary set of Channel Access Process Variables&nbsp;(PVs) to be monitored;
+and if the monitored values starts to match or ceases to match the specified
+criteria it then invokes the specified system command.
+
+<h2>License</h2>
+
+<logo>kryten</logo> is distributed under the GNU General Public
+<a href="http://www.gnu.org/licenses/gpl.html">License</a> version 3.
+<p>
+In particular <logo>kryten</logo> is provided <b>"AS IS" WITHOUT WARRANTY OF ANY KIND</b>.
+
+
+<h2>Usage</h2>
+<literal>
+   usage: kryten  [OPTIONS]  configuration-file
+          kryten  --help | -h
+          kryten  --version
+          kryten  --licence | -l
+          kryten  --warranty | -w
+          kryten  --redistribute | -r
+
+</literal>
+
+<h2>Options</h2>
+
+<p>
+--check, -c<br>
+&nbsp; &nbsp; &nbsp; Check configuration file and print errors/warnings and exit.
+
+<p>
+--daemon, -d<br>
+&nbsp; &nbsp; &nbsp; Run program as a system daemon.
+
+<p>
+--suppress, -s<br>
+&nbsp; &nbsp; &nbsp; Suppress copyright preamble when program starts.
+
+<p>
+--verbose, -v<br>
+&nbsp; &nbsp; &nbsp; Output is more verbose.
+
+<p>
+--help, -h<br>
+&nbsp; &nbsp; &nbsp; Display this help information and exit.
+
+<p>
+--version<br>
+&nbsp; &nbsp; &nbsp; Display verion information and exit.
+
+<p>
+--licence, -l<br>
+&nbsp; &nbsp; &nbsp; Display licence information and exit.
+
+<p>
+--warranty, -w<br>
+&nbsp; &nbsp; &nbsp; Display the without warranty information and exit.
+
+<p>
+--redistribute | -r<br>
+&nbsp; &nbsp; &nbsp; Display the program redistribution conditions and exit.
+
+
+<h2>Parameters</h2>
+
+<h3>configuration-file</h3>
+
+<p>
+This paramener specifies the file that defines the PVs to be monitored together
+with match critera and the system command to be called.
+
+<p>
+The expected file format is as follows. Blank lines and lines starting
+with a # character are ignored, the later being useful for comments.
+Otherwise the line consists of fields. Fields are separated by white
+space (spaces and/or tabs) with optional leading and tailing white space.
+
+<h4>Field 1</h4>
+The first field is the PV name.
+
+<h4>Field 2</h4>
+The second field is the match criteria. This consists of upto 16 sub
+-match criteria seprated by a | character. Each sub field consists of
+a single value or a pair of values, sepratated by a ~ character, that
+specifies an inclusive range of match values.
+
+<p>
+The values may be a string, an integer or a floating value. The type of
+the first match value determines the Channel Access request field type:
+<literal>
+
+   String    DBF_STRING
+   Integer   DBF_LONG
+   Floating  DBF_DOUBLE
+</literal>
+
+<p>
+It is therefore important that a range of values, say for a pump, be
+specified as 2.0~6.25 as opposed to 2~6.25, as the latter will cause the
+subscription of DBF_LONG values from the IOC, yielding, for example, a
+returned value of 6 when the true value is 6.45, thus leading to an
+erroneous match.
+
+<p>
+Match criteria values may be forced to be considered string by enclosing
+the value in double quotes ("). String values containing white space
+must be enclosed in double quotes. For string matches, the case is
+significant.
+
+<h4>Field 3</h4>
+The third field is any program or script that is normally available to
+the user. If a relative path name is specified, this is relative to the
+directory in which <logo>kryten</logo> was started, and not relative
+to the configuration file.
+If a path name is not specified, then the usual PATH environment search
+rules apply.
+
+<p>
+The program or script should expect three parameters, namely the PV name,
+the match status (i.e. 'entry' or 'exit') and the current PV value. The
+program or script is only invoked when the match status changes. If a PV
+disconnects then the program or script is called with a 'disconnect' status
+and the value parameter is an empty string.
+
+<p>
+The program or script is run in background mode, and therefore it will run
+asynchronously. It is the users responsibility to manage the interactions
+between any asynchronous processes.
+
+
+<h3>Configuration file example</h3>
+
+<literal>
+# This is a comment within an example kryten configuration file.
+
+# Monitor beam current and invoke xmessage if current drops below 5mA or
+# exceeds 205 mA or when the current enters the range 5mA to 205 mA
+# Note: we assume the beam current never ever < -1.0e9 or > +1.0e9
+#
+SR11BCM01:CURRENT_MONITOR   -1.0e9~5.0|205.0~+1.0e9   /usr/bin/xmessage
+
+# Monitor the rainbow status and invoke echo when status becomes Green or Orange
+# or when the status ceases to be neither Green nor Orange.
+#
+RAINDOW:STATUS              "Green"|"Orange"          /bin/echo
+
+# end
+
+</literal>
+
+
+<h2>Trivia</h2>
+<p>
+<logo>kryten</logo> is named after Kryten 2X4B 523P out of 
+<literal><font size="4">
+
+              RE<red>D 
+             D</red>WARF
+
+</font></literal>
+the classic British SciFi series
+<a href="http://www.reddwarf.co.uk">http://www.reddwarf.co.uk</a>.
+
+</body>
+</html>
+
