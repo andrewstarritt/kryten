@@ -1,13 +1,13 @@
 /* $File: //depot/sw/epics/kryten/pv_client.c $
- * $Revision: #18 $
- * $DateTime: 2012/03/03 23:48:38 $
+ * $Revision: #21 $
+ * $DateTime: 2015/11/01 19:16:00 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011-2012  Andrew C. Starritt
+ * Copyright (C) 2011-2015  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -103,7 +103,7 @@ static void Create_Channel (CA_Client * pClient)
 static void Subscribe_Channel (CA_Client * pClient)
 {
    unsigned long count;
-   Varient_Kind kind;
+   Variant_Kind kind;
    chtype initial_type;
    chtype update_type;
    size_t size;
@@ -276,7 +276,7 @@ static void Get_Event_Handler (CA_Client * pClient,
    const union db_access_val *pDbr = (union db_access_val *) args->dbr;
    int number;
    int e;
-   Varient_Kind kind;
+   Variant_Kind kind;
    bool enums_as_string;
    dbr_short_t enum_value;
 
@@ -650,9 +650,9 @@ void application_printf_handler (char *formated_text)
 void Print_Match_Information (CA_Client * pClient)
 {
    unsigned int j;
-   Varient_Kind kind;
+   Variant_Kind kind;
    char *request;
-   Varient_Range *pVR;
+   Variant_Range *pVR;
    char lower[45];
    char upper[45];
    char *lq, *uq;
@@ -692,14 +692,15 @@ void Print_Match_Information (CA_Client * pClient)
 
       pVR = &pClient->match_set_collection.item[j];
 
-      Varient_Image (lower, sizeof (lower), &pVR->lower);
+      Variant_Image (lower, sizeof (lower), &pVR->lower);
       lq = (pVR->lower.kind == vkString) ? "\"" : "";
 
-      Varient_Image (upper, sizeof (upper), &pVR->upper);
+      Variant_Image (upper, sizeof (upper), &pVR->upper);
       uq = (pVR->upper.kind == vkString) ? "\"" : "";
 
-      printf ("%s%s%s", lq, lower, lq);
-      if (Varient_Same (&pVR->lower, &pVR->upper) == false) {
+      printf ("%d  %s%s%s", pVR->comp, lq, lower, lq);
+
+      if (pVR->comp == ckRange) {
          printf (" to %s%s%s", uq, upper, uq);
       }
       printf ("\n");
@@ -819,7 +820,7 @@ CA_Client *Allocate_Client ()
  * PUBLIC FUNCTIONS
  *------------------------------------------------------------------------------
  */
-bool Create_PV_Client_List (const char *pv_list_filename, int *number)
+bool Create_PV_Client_List_From_File (const char *pv_list_filename, int *number)
 {
    bool result;
    int n;
@@ -838,6 +839,26 @@ bool Create_PV_Client_List (const char *pv_list_filename, int *number)
    return result;
 }                               /* Create_PV_Client_List */
 
+/*------------------------------------------------------------------------------
+ */
+bool Create_PV_Client_List_From_String (const char *buffer, const size_t size, int *number)
+{
+   bool result;
+   int n;
+
+   /* Initialialise the list of clients.
+    */
+   ellInit (&CA_Client_List);
+
+   result = Scan_Configuration_String (buffer, size, &Allocate_Client);
+
+   n = ellCount (&CA_Client_List);
+   printf ("PV client list created - %d %s.\n", n,
+           (n == 1 ? "entry" : " entries"));
+
+   *number = n;
+   return result;
+}
 
 /*------------------------------------------------------------------------------
  */

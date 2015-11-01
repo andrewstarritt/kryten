@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/kryten.h $
- * $Revision: #5 $
- * $DateTime: 2012/02/26 16:06:27 $
+ * $Revision: #6 $
+ * $DateTime: 2015/11/01 15:48:18 $
  * Last checked in by: $Author: andrew $
  */
 
@@ -17,5 +17,7 @@ typedef enum ebool {
 #define BOOL_IMAGE(zz)  ((zz) ?  "true " : "false")
 
 extern bool is_verbose;
+extern bool quit_invoked;
+extern int exit_code;
 
 #endif                          /* KRYTEN_H_ */

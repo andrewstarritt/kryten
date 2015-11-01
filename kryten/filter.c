@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/filter.c $
- * $Revision: #12 $
- * $DateTime: 2012/03/03 23:48:38 $
+ * $Revision: #16 $
+ * $DateTime: 2015/11/01 20:49:15 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -30,7 +30,9 @@
  * indent options:  -kr -pcs -i3 -cli3 -nbbo -nut
  *
  */
+
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 
 #include "filter.h"
@@ -49,6 +51,8 @@
 static void call_command (CA_Client * pClient, const char *state_image,
                           const char *value_image)
 {
+   /* We flip flop substituting from command to dnammoc to command
+    */
    char dnammoc[COMMAND_BUFFER_SIZE];
    char command[COMMAND_BUFFER_SIZE];
    char q_val_image[VALUE_IMAGE_SIZE];
@@ -69,25 +73,75 @@ static void call_command (CA_Client * pClient, const char *state_image,
     **/
    substitute (command, sizeof (command), dnammoc, "%v", q_val_image);
 
-   if (is_verbose) {
-      printf ("calling system (\"%s\")\n", command);
-   }
+   /* Check for built in commands.
+    */
+   if (strncmp (command, "quit ", 5) == 0) {
 
-   status = system (command);
-   if (status != 0) {
-      printf ("system (\"%s\") returned %d\n", command, status);
+      if (strncmp (state_image, "match", 5) == 0) {
+         if (is_verbose) {
+            printf ("builtin: %s\n", command);
+         }
+         quit_invoked = true;
+         exit_code = atoi (&command [5]);
+      }
+
+   } else {
+
+      if (is_verbose) {
+         printf ("calling system (\"%s\")\n", command);
+      }
+
+      status = system (command);
+      if (status != 0) {
+         printf ("system (\"%s\") returned %d\n", command, status);
+      }
    }
 }                               /* call_command */
 
 
 /*------------------------------------------------------------------------------
  */
-static bool check_in_range (const Varient_Value * value,
-                            const Varient_Range * range)
+static bool is_value_a_match (const Variant_Value * value,
+                              const Variant_Range * range)
 {
-   return Varient_Le (&range->lower, value)
-       && Varient_Le (value, &range->upper);
-}                               /* check_in_range */
+   bool result;
+
+   switch (range->comp) {
+      case ckRange:
+         result = Variant_Le (&range->lower, value) &&
+                  Variant_Le (value, &range->upper);
+         break;
+
+      case ckEqual:
+         result = Variant_Eq (value, &range->lower);
+         break;
+
+      case ckNotEqual:
+         result = Variant_Ne (value, &range->lower);
+         break;
+
+      case ckLessThan:
+         result = Variant_Lt (value, &range->lower);
+         break;
+
+      case ckLessThanEqual:
+         result = Variant_Le (value, &range->lower);
+         break;
+
+      case ckGreaterThan:
+         result = Variant_Gt (value, &range->lower);
+         break;
+
+      case ckGreaterThanEqual:
+         result = Variant_Ge (value, &range->lower);
+         break;
+
+      default:
+         result = false;
+   }
+   return result;
+
+}                               /* is_value_a_match */
 
 /*------------------------------------------------------------------------------
  */
@@ -105,8 +159,8 @@ void Process_PV_Update (CA_Client * pClient)
    /* Check each range in-turn
     */
    for (j = 0; j < pClient->match_set_collection.count; j++) {
-      if (check_in_range
-          (&pClient->data, &pClient->match_set_collection.item[j])) {
+      if (is_value_a_match (&pClient->data,
+                            &pClient->match_set_collection.item[j])) {
          /* Found a match
           */
          matches = true;
@@ -122,7 +176,7 @@ void Process_PV_Update (CA_Client * pClient)
        */
       state_image = (matches == TRUE) ? "match " : "reject";
 
-      Varient_Image (value_image, sizeof (value_image), &pClient->data);
+      Variant_Image (value_image, sizeof (value_image), &pClient->data);
 
       call_command (pClient, state_image, value_image);
    }

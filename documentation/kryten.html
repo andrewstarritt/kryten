@@ -1,8 +1,8 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <!-- $File: //depot/sw/epics/kryten/documentation/kryten.html $ -->
-<!-- $Revision: #9 $ -->
-<!-- $DateTime: 2013/02/03 17:35:29 $ -->
+<!-- $Revision: #11 $ -->
+<!-- $DateTime: 2015/11/01 16:34:18 $ -->
 <!-- Last checked in by: $Author: andrew $ -->
 
 <html>
@@ -19,7 +19,7 @@
 <body  bgcolor="#FFF0E0" text="#201000"
        link="#0000FF"    vlink="#E000E0"  alink="#FF0000" >
 
-<h1>kryten 2.1.6</h1>
+<h1>kryten 2.1.7</h1>
 
 <h2>1 Introduction</h2>
 
@@ -57,6 +57,12 @@ In particular <logo>kryten</logo> is provided <b>"AS IS" WITHOUT WARRANTY OF ANY
 <p>
 --daemon, -d<br>
 &nbsp; &nbsp; &nbsp; Run program as a system daemon.
+
+<p>
+--monitor, -m  configuration<br>
+&nbsp; &nbsp; &nbsp; Use specified string configuration to define required PVs instread of a
+file.<br>
+&nbsp; &nbsp; &nbsp; Within string, use ';' as specification separator.
 
 <p>
 --suppress, -s<br>
@@ -101,7 +107,10 @@ Items in <i>italics</i> are primitives and are defined after the syntax.
 Items in single quotes (') are to be interpreted literally.
 <br>
 <p>
-&lt;line&gt; ::= '#' <i>any text</i> &nbsp; | &nbsp; &lt;channel-spec&gt; | &nbsp; &lt;null&gt; &nbsp;
+&lt;line&gt; ::= '#' <i>any text</i> &nbsp; | &nbsp; &lt;channel-spec-list&gt; &nbsp; | &nbsp; &lt;null&gt; &nbsp;
+
+<p>
+&lt;channel-spec-list&gt; ::= &lt;channel-spec&gt; &nbsp; | &nbsp; &lt;channel-spec&gt; ';'   &lt;channel-spec-list&gt;
 
 <p>
 &lt;channel-spec&gt; ::= &lt;pv-name&gt; &lt;element-index&gt; &lt;match-list&gt; &lt;command&gt;
@@ -116,7 +125,7 @@ Items in single quotes (') are to be interpreted literally.
 &lt;match-list&gt; ::= &lt;match-item&gt; &nbsp; |&nbsp;  &lt;match-item&gt; '|' &lt;match-list&gt;
 
 <p>
-&lt;match-item&gt; ::= &lt;value&gt; &nbsp; |&nbsp; &lt;value&gt; '~' &lt;value&gt;
+&lt;match-item&gt; ::= &lt;value&gt; &nbsp; | &nbsp; &lt;value&gt; '~' &lt;value&gt;  &nbsp; | &nbsp; &lt;qualifier&gt; &lt;value&gt;
 
 <p>
 &lt;value&gt; ::= <i>integer</i> &nbsp; |&nbsp; <i>real number</i> &nbsp; |&nbsp; &lt;string-value&gt;
@@ -125,7 +134,12 @@ Items in single quotes (') are to be interpreted literally.
 &lt;string-value&gt; ::= <i>unquoted string</i> &nbsp; | &nbsp; <i>'"'any text'"'</i>
 
 <p>
-&lt;command&gt; ::= &lt;simple-command&gt; &nbsp; | &nbsp; &lt;elaborate-command&gt;
+&lt;qualifier&gt;  ::=  '&lt;' &nbsp; | &nbsp; '&lt;=' &nbsp; | &nbsp; '&gt;' &nbsp; | &nbsp; '&gt;=' &nbsp; | &nbsp; '=' &nbsp; | &nbsp;  '/=' &nbsp;
+<p>
+&lt;command&gt; ::= &lt;simple-command&gt; &nbsp; | &nbsp; &lt;elaborate-command&gt; &nbsp; | &nbsp; &lt;builtin-command&gt;
+
+<p>
+&lt;builtin-command&gt; ::= 'quit' &nbsp; | &nbsp;  'quit' &nbsp; <i>integer</i>
 
 <p>
 &lt;simple-command&gt; ::= <i>basic command, no parameters</i>
@@ -178,7 +192,10 @@ identical.
 <h3>6.2 Match List</h3>
 Upto 16 match items may be specified.
 
-<h3>6.3 Format Converson Parameters</h3>
+<h3>6.3 Build in quit command</h3>
+Causes <logo>kryten</logo> to terminate, with specified exit code if given otherwise with exit code 0.
+
+<h3>6.4 Format Converson Parameters</h3>
 %p, %e, %m, and %v are format conversion parameters that are expanded prior
 to the system call as follows:
 <p>
@@ -188,7 +205,7 @@ to the system call as follows:
 &nbsp; &nbsp; %e is replaced by the element number.
 <p>
 
-<h3>6.4 Configuration file example</h3>
+<h3>6.5 Configuration file example</h3>
 <font size="4"><pre>
 # This is a comment within an example kryten configuration file.
 

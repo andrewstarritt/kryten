@@ -1,13 +1,13 @@
 /* $File: //depot/sw/epics/kryten/read_configuration.c $
- * $Revision: #13 $
- * $DateTime: 2012/03/03 23:48:38 $
+ * $Revision: #17 $
+ * $DateTime: 2015/11/01 20:49:15 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011-2012  Andrew C. Starritt
+ * Copyright (C) 2011-2015  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@
  * indent options:  -kr -pcs -i3 -cli3 -nbbo -nut
  *
  */
+
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -49,36 +51,35 @@ static int debug = 0;
 /*------------------------------------------------------------------------------
  * Skip white space
  */
-#define SKIP_WHITE_SPACE(input) {                                     \
-   while (isspace (*input)) {                                         \
-      input++;                                                        \
-   }                                                                  \
+#define SKIP_WHITE_SPACE(input) {                                        \
+   while (isspace (*input)) {                                            \
+      input++;                                                           \
+   }                                                                     \
 }
 
 /*------------------------------------------------------------------------------
  * Error return if at end of line
  */
-#define QUIT_ON_EOL(input) {                                          \
-   if (*input == '\0') {                                              \
-      printf ("%s:%d premature end of line.\n", filename, line_num);  \
-      return false;                                                   \
-   }                                                                  \
+#define QUIT_ON_EOL(input) {                                             \
+   if (*input == '\0') {                                                 \
+      printf ("%s:%d premature end of line.\n", data_source, line_num);  \
+      return false;                                                      \
+   }                                                                     \
 }
 
 /*------------------------------------------------------------------------------
  * Skip white space - return of end of line
  */
-#define SKIP_WHITE_QUIT_ON_EOL(input) {                               \
-   SKIP_WHITE_SPACE (input);                                          \
-   QUIT_ON_EOL (input);                                               \
+#define SKIP_WHITE_QUIT_ON_EOL(input) {                                  \
+   SKIP_WHITE_SPACE (input);                                             \
+   QUIT_ON_EOL (input);                                                  \
 }
-
 
 /*------------------------------------------------------------------------------
  * Input format is general, e.g.  123, 0x123, 456.67, 32.99e+8, Text, "text".
  */
-static bool scan_value (char *input, Varient_Value * data, char **endptr,
-                        const char *filename, const int line_num)
+static bool parse_value (char *input, Variant_Value * data, char **endptr,
+                         const char *data_source, const int line_num)
 {
    char *source;
    int len;
@@ -134,7 +135,7 @@ static bool scan_value (char *input, Varient_Value * data, char **endptr,
    n = strlen (item);
 
    if (debug) {
-      printf ("%s:%d  extracted item %s\n", filename, line_num, item);
+      printf ("%s:%d  extracted item %s\n", data_source, line_num, item);
    }
 
    /* check for a quoted string.
@@ -144,7 +145,7 @@ static bool scan_value (char *input, Varient_Value * data, char **endptr,
        */
       n = n - 2;
       if (n > MAX_STRING_SIZE) {
-         printf ("%s:%d quoted string too big: %s\n", filename, line_num,
+         printf ("%s:%d quoted string too big: %s\n", data_source, line_num,
                  item);
          return false;
       }
@@ -174,7 +175,7 @@ static bool scan_value (char *input, Varient_Value * data, char **endptr,
    /* Treat as an unquoted string
     */
    if (n > MAX_STRING_SIZE) {
-      printf ("%s:%d un-quoted string too big: %s\n", filename, line_num,
+      printf ("%s:%d un-quoted string too big: %s\n", data_source, line_num,
               item);
       return false;
    }
@@ -187,14 +188,93 @@ static bool scan_value (char *input, Varient_Value * data, char **endptr,
 }                               /* scan_value */
 
 /*------------------------------------------------------------------------------
+ * Valid format is
+ *    value or
+ *    value ~ value or
+ *    op value where op is <=, >=, = , /= <, >
+ */
+static bool parse_match (char *line, Variant_Range* item, char **endptr,
+                         const char *data_source, const int line_num)
+{
+   /* Must be consistant with Comparision_Kind
+    */
+   static const char* comparison_operators [7] = {
+      "", "/=", "<=", ">=", "=", "<", ">"
+   };
+
+   /* Ensure not erroneous.
+    */
+   item->comp = ckVoid;
+   item->lower.kind = vkVoid;
+   item->upper.kind = vkVoid;
+
+   bool status;
+   char *source = line;
+
+   /* Skip white space (if any) - error return if at end of line.
+    */
+   SKIP_WHITE_QUIT_ON_EOL (source);
+
+
+   /* Check for equality operator
+    */
+   Comparision_Kind e;
+
+   for (e = 1; e <= 6; e++) {
+      size_t n = strlen (comparison_operators [e]);
+
+      if (strncmp (source, comparison_operators [e], n) == 0) {
+         /* found an operator
+          */
+         item->comp = e;
+
+         source += n; /* skip the operator */
+
+         SKIP_WHITE_QUIT_ON_EOL (source);
+
+         status = parse_value
+             (source, &item->lower, endptr, data_source, line_num);
+         return status;
+      }
+   }
+
+   /* must be value or value ~ value.
+    */
+   status = parse_value
+       (source, &item->lower, endptr, data_source, line_num);
+   if (status == false) {
+      return false;
+   }
+   source = *endptr;
+
+   SKIP_WHITE_QUIT_ON_EOL (source);
+
+   /* Range operator ? */
+   if (*source == '~') {
+      source++;
+      SKIP_WHITE_QUIT_ON_EOL (source);
+      status = parse_value
+          (source, &item->upper, endptr, data_source, line_num);
+      if (status == false) {
+         return false;
+      }
+      item->comp = ckRange;
+   } else {
+      item->comp = ckEqual;
+   }
+
+   return true;
+}
+
+/*------------------------------------------------------------------------------
  * pv_name and command must be large enough.
  * filename and line_num used for error reports
  */
-bool parse_line (char *line, char *pv_name, int *index,
-                 Varient_Range_Collection * pVRC, char *command,
-                 const char *filename, const int line_num)
+static bool parse_line (char *line, char *pv_name, int *index,
+                        Variant_Range_Collection * pVRC, char *command,
+                        const char *data_source, const int line_num)
 {
-   static const char *type_mis_match =
+   static const char* type_mis_match =
        "%s:%d warning: %s value of sub-match %d is %s, expecting %s.\n";
 
    char *source;
@@ -205,10 +285,9 @@ bool parse_line (char *line, char *pv_name, int *index,
    char *endptr;
    bool status;
    int j;
-   Varient_Kind expected;
-   Varient_Kind lower_kind;
-   Varient_Kind upper_kind;
-   bool single_value;
+   Variant_Kind expected;
+   Variant_Kind lower_kind;
+   Variant_Kind upper_kind;
    bool simple_command;
 
    /* Ensure not erroneous/set defaults.
@@ -235,13 +314,13 @@ bool parse_line (char *line, char *pv_name, int *index,
    /* Check for sensible PV name, check it starts okay at least.
     */
    if ((isalnum (*pv_name) == false) && (*pv_name != '$')) {
-      printf ("%s:%d error invalid PV name: %s\n", filename, line_num,
+      printf ("%s:%d error invalid PV name: %s\n", data_source, line_num,
               pv_name);
       return false;
    }
 
    if (debug > 4) {
-      printf ("%s:%d  pv = %s\n", filename, line_num, pv_name);
+      printf ("%s:%d  pv = %s\n", data_source, line_num, pv_name);
    }
 
    SKIP_WHITE_QUIT_ON_EOL (source);
@@ -258,7 +337,7 @@ bool parse_line (char *line, char *pv_name, int *index,
       }
 
       if (*source != ']') {
-         printf ("%s:%d error missing ']'\n", filename, line_num);
+         printf ("%s:%d error missing ']'\n", data_source, line_num);
          return false;
       }
       finish = source;
@@ -272,23 +351,23 @@ bool parse_line (char *line, char *pv_name, int *index,
 
       if (status == false) {
          printf ("%s:%d  index item [%s] is not a valid integer\n",
-                 filename, line_num, item);
+                 data_source, line_num, item);
          return false;
       }
 
       if (debug > 4) {
-         printf ("%s:%d [%s] index = %d\n", filename, line_num, item,
+         printf ("%s:%d [%s] index = %d\n", data_source, line_num, item,
                  *index);
       }
 
       if (*index < 1) {
-         printf ("%s:%d error invalid PV index: %d\n", filename, line_num,
+         printf ("%s:%d error invalid PV index: %d\n", data_source, line_num,
                  *index);
          return false;
       }
 
       if (*index > 1000) {
-         printf ("%s:%d query valid PV index: %d ???\n", filename,
+         printf ("%s:%d query valid PV index: %d ???\n", data_source,
                  line_num, *index);
       }
 
@@ -302,42 +381,16 @@ bool parse_line (char *line, char *pv_name, int *index,
    for (j = 0; j < NUMBER_OF_VARIENT_RANGES; j++) {
 
       SKIP_WHITE_QUIT_ON_EOL (source);
-      status = scan_value
-          (source, &pVRC->item[j].lower, &endptr, filename, line_num);
+
+      status = parse_match (source, &pVRC->item[j], &endptr, data_source, line_num);
       if (status == false) {
          return false;
       }
       source = endptr;
 
-      SKIP_WHITE_QUIT_ON_EOL (source);
-      if (*source == '~') {
-
-         source++;
-         SKIP_WHITE_QUIT_ON_EOL (source);
-         status = scan_value
-             (source, &pVRC->item[j].upper, &endptr, filename, line_num);
-         if (status == false) {
-            return false;
-         }
-         source = endptr;
-         single_value = false;
-      } else {
-         /* Just set upper value the same as the lower value.
-          */
-         pVRC->item[j].upper = pVRC->item[j].lower;
-         single_value = true;
-      }
-
       /* Update number of valid entries so far
        */
       pVRC->count = j + 1;
-
-      SKIP_WHITE_QUIT_ON_EOL (source);
-      if (*source == '~') {
-         printf ("%s:%d error unexpected 3rd value in sub-match %d\n",
-                 filename, line_num, pVRC->count);
-         return false;
-      }
 
       /* Are value kinds consistent?
        */
@@ -345,29 +398,29 @@ bool parse_line (char *line, char *pv_name, int *index,
       lower_kind = pVRC->item[j].lower.kind;
       upper_kind = pVRC->item[j].upper.kind;
 
-      /* Never fails for zeroth entry
+      /* Never fails for zeroth lower entry
        */
       if (lower_kind != expected) {
-         printf (type_mis_match, filename, line_num,
-                 (single_value ? "the" : "1st"), pVRC->count,
+         printf (type_mis_match, data_source, line_num,
+                 (pVRC->item[j].comp == ckRange ? "1st" : "the"), pVRC->count,
                  vkImage (lower_kind), vkImage (expected));
       }
 
-      if ((!single_value) && (upper_kind != expected)) {
-         printf (type_mis_match, filename, line_num,
+      if ((pVRC->item[j].comp == ckRange) && (upper_kind != expected)) {
+         printf (type_mis_match, data_source, line_num,
                  "2nd", pVRC->count,
                  vkImage (upper_kind), vkImage (expected));
       }
 
+      SKIP_WHITE_QUIT_ON_EOL (source);
       if (*source != '|') {
          break;
       }
       source++;                 /* skip the '|' */
 
       if (pVRC->count >= NUMBER_OF_VARIENT_RANGES) {
-         printf
-             ("%s:%d error attempting to specify more than %d sub-matches\n",
-              filename, line_num, NUMBER_OF_VARIENT_RANGES);
+         printf ("%s:%d error attempting to specify more than %d sub-matches\n",
+                 data_source, line_num, NUMBER_OF_VARIENT_RANGES);
          return false;
       }
    }
@@ -414,12 +467,10 @@ bool parse_line (char *line, char *pv_name, int *index,
 
 /*------------------------------------------------------------------------------
  */
-bool Scan_Configuration_File (const char *filename,
-                              const Allocate_Client_Handle allocate)
+static bool Scan_Configuration (FILE *input_file,
+                                const char* data_source,
+                                const Allocate_Client_Handle allocate)
 {
-   const char *function = "Scan_Configuration_File";
-
-   FILE *input_file = NULL;
    CA_Client *pClient = NULL;
    int line_num;
    char line[MAX_LINE_LENGTH + 1];
@@ -430,21 +481,9 @@ bool Scan_Configuration_File (const char *filename,
    char command[MAX_LINE_LENGTH + 13];
    int len;
    int index;
-   Varient_Range_Collection match_set_collection;
+   Variant_Range_Collection match_set_collection;
    bool status;
    char *source;
-
-   if (debug > 0) {
-      printf ("%s: entry: filename='%s'.\n", function, filename);
-   }
-
-   /* Attempt to open the specified file.
-    */
-   input_file = fopen (filename, "r");
-   if (!input_file) {
-      printf ("%s: unable to open file %s.\n", function, filename);
-      return false;
-   }
 
    /* Read lines from file
     */
@@ -453,7 +492,7 @@ bool Scan_Configuration_File (const char *filename,
 
       line_num++;
 
-      /* Remove trailing \n char
+      /* Remove trailing \n char if it exists.
        */
       len = strlen (line);
       if ((len > 0) && (line[len - 1] == '\n')) {
@@ -469,64 +508,128 @@ bool Scan_Configuration_File (const char *filename,
          continue;
       }
 
-      status = parse_line (source, pv_name, &index, &match_set_collection,
-                           command, filename, line_num);
-
-      if (status == false) {
-         /* Any errors already reported - just print whole line.
-          */
-         printf ("%s:%d %s\n", filename, line_num, line);
-         continue;
-      }
-
-      /* Check sizes
+      /* Split line into sublines using ';' character - strtok not smart enough.
        */
-      if (strlen (pv_name) > sizeof (pClient->pv_name) - 1) {
-         printf ("%s:%d pv name too long\n", filename, line_num);
-         printf ("%s:%d %s\n", filename, line_num, line);
-         continue;
-      }
+      while (*source != '\0') {
+         char* sub_line = source; /* save where we parse from */
 
-      if (strlen (command) > sizeof (pClient->match_command) - 1) {
-         printf ("%s:%d command too long\n", filename, line_num);
-         printf ("%s:%d %s\n", filename, line_num, line);
-         continue;
-      }
+         /* TODO: check if ; within quotes */
+         char* scan = source;
+         while (*scan != '\0' && *scan != ';') scan++;
 
-      if (debug >= 2) {
-         printf ("processing PV: %s [%d] {match}%d %s\n", pv_name, index,
-                 match_set_collection.count, command);
-      }
+         char* next_source = scan;  /* end of string or ';' */
+         if (*scan == ';') {
+            /* terminate string and set up next source */
+            *scan = '\0';
+            next_source++;
+         }
+         source = next_source;
 
-      pClient = allocate ();
-      if (pClient) {
-         /* Unlike strncpy, snprintf includes tailing '\0'
+         status = parse_line (sub_line, pv_name, &index, &match_set_collection,
+                              command, data_source, line_num);
+
+         if (status == false) {
+            /* Any errors already reported - just print whole line.
+             */
+            printf ("%s:%d %s\n", data_source, line_num, sub_line);
+            continue;
+         }
+
+         /* Check sizes
           */
-         snprintf (pClient->pv_name, sizeof (pClient->pv_name), "%s",
-                   pv_name);
-         snprintf (pClient->match_command, sizeof (pClient->match_command),
-                   "%s", command);
-         pClient->element_index = index;
-         pClient->match_set_collection = match_set_collection;
+         if (strlen (pv_name) > sizeof (pClient->pv_name) - 1) {
+            printf ("%s:%d pv name too long\n", data_source, line_num);
+            printf ("%s:%d %s\n", data_source, line_num, sub_line);
+            continue;
+         }
 
-         continue;
+         if (strlen (command) > sizeof (pClient->match_command) - 1) {
+            printf ("%s:%d command too long\n", data_source, line_num);
+            printf ("%s:%d %s\n", data_source, line_num, sub_line);
+            continue;
+         }
+
+         if (debug >= 2) {
+            printf ("processing PV: %s [%d] {match}%d %s\n", pv_name, index,
+                    match_set_collection.count, command);
+         }
+
+         pClient = allocate ();
+         if (pClient) {
+            /* Unlike strncpy, snprintf includes tailing '\0'
+          */
+            snprintf (pClient->pv_name, sizeof (pClient->pv_name), "%s",
+                      pv_name);
+            snprintf (pClient->match_command, sizeof (pClient->match_command),
+                      "%s", command);
+            pClient->element_index = index;
+            pClient->match_set_collection = match_set_collection;
+
+            continue;
+         }
       }
-
-      /* Ignore anything left over
-       */
-      printf ("%s:%d warning skipping: '%s' - failed to allocate client\n",
-              filename, line_num, line);
    }
 
-   /* Close file
-    */
-   (void) fclose (input_file);
-
    if (debug > 0) {
-      printf ("%s: exit:  filename='%s'.\n", function, filename);
+      printf ("%s: exit: data='%s'.\n", __FUNCTION__, data_source);
    }
 
    return true;
-}                               /* Scan_Configuration_File */
+}                               /* Scan_Configuration */
+
+
+/*------------------------------------------------------------------------------
+ */
+bool Scan_Configuration_File (const char *filename,
+                               const Allocate_Client_Handle allocate)
+{
+   bool result;
+   FILE* f;
+
+   if (debug > 0) {
+      printf ("%s: entry: filename='%s'.\n", __FUNCTION__, filename);
+   }
+
+   /* Attempt to open the specified file.
+    */
+   f = fopen (filename, "r");
+   if (!f) {
+      printf ("%s: unable to open file %s.\n", __FUNCTION__, filename);
+      return false;
+   }
+
+   result = Scan_Configuration (f, filename, allocate);
+
+   /* Close file
+    */
+   (void) fclose (f);
+
+   return result;
+}
+
+/*------------------------------------------------------------------------------
+ */
+bool Scan_Configuration_String (const char *buffer,
+                                const size_t size,
+                                const Allocate_Client_Handle allocate)
+{
+   bool result;
+   FILE* f;
+
+   /* Read only mode  - allow casting from const */
+   f = fmemopen ((char *)buffer, size, "r");
+
+   if (!f) {
+      printf ("%s: unable to open memory stream.\n", __FUNCTION__);
+      return false;
+   }
+   result = Scan_Configuration (f, "memory buffer", allocate);
+
+   /* Close file
+    */
+   (void) fclose (f);
+
+   return result;
+}
 
 /* end */

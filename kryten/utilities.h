@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/utilities.h $
- * $Revision: #11 $
- * $DateTime: 2012/02/26 16:10:02 $
+ * $Revision: #14 $
+ * $DateTime: 2015/11/01 19:16:00 $
  * Last checked in by: $Author: andrew $
  */
 
@@ -31,16 +31,16 @@ bool is_either (const char *s, const char *s1, const char *s2);
 
 
 /*------------------------------------------------------------------------------
- * prefix of form:  --xxx=value  where xxx is name
  */
-void check_argument (const char *arg, const char *name,
-                     bool * matches, bool * is_found, const char **value);
+bool check_argument (const char *arg, const char *param,
+                     const char *name1, const char *name2,
+                     bool * is_found, const char **value);
 
 
 /*------------------------------------------------------------------------------
  */
-void check_flag (const char *arg, const char *name1, const char *name2,
-                 bool * matches, bool * is_found);
+bool check_flag (const char *arg, const char *name1, const char *name2,
+                 bool * is_found);
 
 
 /*------------------------------------------------------------------------------
@@ -105,47 +105,43 @@ long get_long_env (const char *name, bool * status);
 /*------------------------------------------------------------------------------
  * own varient type
  */
-typedef enum eVarient_Kind {
+typedef enum eVariant_Kind {
    vkVoid,
    vkString,
    vkInteger,
    vkFloating
-} Varient_Kind;
+} Variant_Kind;
 
-union Varient_Union {
+union Variant_Union {
    char sval[MAX (MAX_STRING_SIZE, MAX_ENUM_STRING_SIZE) + 1];
    long ival;                   /* used for long, short and char and enum value */
    double dval;                 /* used for double and float */
 };
 
 
-typedef struct sVarient_Value {
-   Varient_Kind kind;
-   union Varient_Union value;
-} Varient_Value;
+typedef struct sVariant_Value {
+   Variant_Kind kind;
+   union Variant_Union value;
+} Variant_Value;
 
 
-const char *vkImage (const Varient_Kind kind);
+const char *vkImage (const Variant_Kind kind);
 
-/* Performs a Left == Right test on two varient values.
- * Unlike Lt which perforce type conversion in order to do the 
- * comparison, this is a strict type check, i.e 
- * Same (Float 5.0, Int 5) returns false.
- *
- * !(Lt (A,B)) && !(Lt (B,A)) does not always give same result as Same
+/* Performs equality test on two varient values.
  */
-bool Varient_Same (const Varient_Value * left,
-                   const Varient_Value * right);
+bool Variant_Eq (const Variant_Value* left, const Variant_Value * right);
+bool Variant_Lt (const Variant_Value* left, const Variant_Value * right);
 
-/* Performs a Left <= Right test on two varient values.
- */
-bool Varient_Le (const Varient_Value * left, const Varient_Value * right);
+bool Variant_Ne (const Variant_Value* left, const Variant_Value * right);
+bool Variant_Gt (const Variant_Value* left, const Variant_Value * right);
+bool Variant_Le (const Variant_Value* left, const Variant_Value * right);
+bool Variant_Ge (const Variant_Value* left, const Variant_Value * right);
 
 /* Upon successful return (value >= 0), this function returns the number of
  * characters written to character string str (not including the trailing '\0'
  * used to end output to strings). The function does not write  more than
  * size bytes (including the trailing '\0').
 */
-int Varient_Image (char *str, size_t size, const Varient_Value * item);
+int Variant_Image (char *str, size_t size, const Variant_Value * item);
 
 #endif                          /* UTILITIES_H_ */

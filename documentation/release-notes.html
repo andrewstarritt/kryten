@@ -1,6 +1,6 @@
 <!-- $File: //depot/sw/epics/kryten/documentation/release-notes.html $ -->
-<!-- $Revision: #5 $ -->
-<!-- $DateTime: 2013/02/03 17:35:29 $ -->
+<!-- $Revision: #7 $ -->
+<!-- $DateTime: 2015/11/01 16:34:18 $ -->
 <!-- Last checked in by: $Author: andrew $ -->
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -20,6 +20,31 @@
 
 <h1>Release Notes</h1>
 
+<h2>kryten-2.1.7</h2>
+Several new features for this release.
+<p>
+Introduced the --monitor, -m option that allows the configuration "file" to be specified as
+as single command line argument to kryten.
+<p>
+Mainly to support the command line configuration specification, multiple channel monitoring
+specifications can be specified on one line, separated by a semi-colon (;) symbol.
+<p>
+Added a builit in quit command that terminates kryten. This takes an option intergere parameter
+that can be used as the exit code.
+<p>
+A channel monitoring specification value can now be qualified with "&gt;=", "&gt;", "&lt;", "&lt;=" and "/=".
+The previously implied "=" qualifier may now also be explicit.
+<p>
+Exit codes from sig int and sig term are now the same as if these signals were not caught.
+<p>
+These may all be combined thus:
+<pre>
+   kryten -m "SR11BCM01:CURRENT_MONITOR  &lt; 180.0 quit 6 ; SR11BCM01:LIFETIME_MONITOR  &lt; 16.0 quit 8"
+</pre>
+kryten will run until either the first PV drops below 180.0 or the second drops below 16.0 and will terminate
+with exit code 6 or 8 respectively.
+<p>
+
 <h2>kryten-2.1.6</h2>
 Cosmetic fixes - tidied up the help info.
 <p>
@@ -29,7 +54,7 @@ Cosmetic fixes - proper colour reset, removal of double "the the" in output mess
 <p>
 
 <h2>kryten-2.1.4</h2>
-Included the EPICS base version as part of the kyrten version.
+Included the EPICS base version as part of the kryten version.
 
 <p>
 Minor help info typo fixes.

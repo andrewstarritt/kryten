@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/pv_client.h $
- * $Revision: #13 $
- * $DateTime: 2012/03/03 23:48:38 $
+ * $Revision: #16 $
+ * $DateTime: 2015/11/01 19:16:00 $
  * Last checked in by: $Author: andrew $
  */
 
@@ -22,20 +22,34 @@
 #define CA_CLIENT_MAGIC   0xEB1C5314
 
 #define MAXIMUM_PVNAME_SIZE        80
-#define NUMBER_OF_VARIENT_RANGES   16
+#define NUMBER_OF_VARIENT_RANGES   20
 #define MATCH_COMMAND_LENGTH      120
 
-typedef struct sVarient_Range {
-   Varient_Value lower;
-   Varient_Value upper;
-} Varient_Range;
+/* Defines the types of value copmparisons that may be performed.
+ * Order is significant, e.g. <= comes before <.
+ */
+typedef enum eComparision_Kind {
+   ckVoid = 0,
+   ckNotEqual,            /* /= */
+   ckLessThanEqual,       /* <= */
+   ckGreaterThanEqual,    /* >= */
+   ckEqual,               /* =  */
+   ckLessThan,            /* <  */
+   ckGreaterThan,         /* >  */
+   ckRange                /* ~  */
+} Comparision_Kind;
+
+typedef struct sVariant_Range {
+   Comparision_Kind comp;
+   Variant_Value lower;
+   Variant_Value upper;
+} Variant_Range;
 
 
-typedef struct sVarient_Range_Collection {
+typedef struct sVariant_Range_Collection {
    unsigned int count;
-   Varient_Range item[NUMBER_OF_VARIENT_RANGES];
-} Varient_Range_Collection;
-
+   Variant_Range item[NUMBER_OF_VARIENT_RANGES];
+} Variant_Range_Collection;
 
 
 struct sCA_Client {
@@ -82,10 +96,10 @@ struct sCA_Client {
 
    time_t disconnect_time;      /* system time */
 
-   Varient_Value data;          /* current data value */
+   Variant_Value data;          /* current data value */
 
    char match_command[MATCH_COMMAND_LENGTH + 1];        /* system command to be called */
-   Varient_Range_Collection match_set_collection;
+   Variant_Range_Collection match_set_collection;
    bool last_update_matched;
 
    int magic2;
@@ -100,7 +114,8 @@ typedef bool (*Bool_Function_Handle) ();
 
 typedef CA_Client *(*Allocate_Client_Handle) ();
 
-bool Create_PV_Client_List (const char *pv_list_filename, int *number);
+bool Create_PV_Client_List_From_File (const char *pv_list_filename, int *number);
+bool Create_PV_Client_List_From_String (const char *buffer, const size_t size, int *number);
 
 void Print_Clients_Info ();
 

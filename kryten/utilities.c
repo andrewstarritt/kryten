@@ -1,13 +1,13 @@
 /* $File: //depot/sw/epics/kryten/utilities.c $
- * $Revision: #10 $
- * $DateTime: 2012/02/26 16:10:02 $
+ * $Revision: #13 $
+ * $DateTime: 2015/11/01 19:16:00 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011-2012  Andrew C. Starritt
+ * Copyright (C) 2011-2015  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,42 +56,43 @@ bool is_either (const char *s, const char *s1, const char *s2)
 
 /*------------------------------------------------------------------------------
  */
-void check_argument (const char *arg, const char *name,
-                     bool * matches, bool * is_found, const char **value)
+bool check_argument (const char *arg, const char *param,
+                     const char *name1, const char *name2,
+                     bool * is_found, const char **value)
 {
-   char prefix[120];
-   size_t n;
+   bool result;
 
-   (void) snprintf (prefix, sizeof (prefix), "--%s=", name);
-   n = strlen (prefix);
-   if (strncmp (arg, prefix, n) == 0) {
-      *matches = true;
+   result = is_either (arg, name1, name2);
+   if (result) {
       if (*is_found == false) {
-         *value = &arg[n];
          *is_found = true;
+         *value = param;
       } else {
-         printf ("%sWarning:%s secondary %s option ignored\n",
-                 yellow, gray, prefix);
+         printf ("%sWarning:%s second %s/%s option ignored\n",
+                 yellow, reset, name1, name2);
       }
    }
+   return result;
 }                               /* check_argument */
 
 
 /*------------------------------------------------------------------------------
  */
-void check_flag (const char *arg, const char *name1, const char *name2,
-                 bool * matches, bool * is_found)
+bool check_flag (const char *arg, const char *name1, const char *name2,
+                 bool * is_found)
 {
-   if (is_either (arg, name1, name2)) {
-      *matches = true;
+   bool result;
+
+   result = is_either (arg, name1, name2);
+   if (result) {
       if (*is_found == false) {
          *is_found = true;
       } else {
-         printf ("%sWarning:%s secondary %s/%s option ignored\n",
+         printf ("%sWarning:%s second %s/%s option ignored\n",
                  yellow, reset, name1, name2);
       }
    }
-
+   return result;
 }                               /* check_flag */
 
 
@@ -158,7 +159,7 @@ char *substitute (char *dest, const size_t n, const char *src,
       copy_len = MIN (max_room, replace_len);
       strncat (dest, replace, copy_len);
 
-      /* Move past fins string 
+      /* Move past fins string
        */
       from = src_find + find_len;
       src_find = strstr (from, (char *) find);
@@ -311,7 +312,7 @@ long get_long_env (const char *name, bool * status)
 
 /*------------------------------------------------------------------------------
  */
-const char *vkImage (const Varient_Kind kind)
+const char *vkImage (const Variant_Kind kind)
 {
    switch (kind) {
       case vkVoid:
@@ -333,54 +334,7 @@ const char *vkImage (const Varient_Kind kind)
 
 /*------------------------------------------------------------------------------
  */
-bool Varient_Same (const Varient_Value * left, const Varient_Value * right)
-{
-   bool result = false;
-   bool error = false;
-   int t;
-
-   if (left->kind == right->kind) {
-
-      switch (right->kind) {
-         case vkVoid:
-            result = true;
-            break;
-
-         case vkString:
-            t = strncmp (left->value.sval, right->value.sval,
-                         sizeof (left->value.sval));
-            result = (t == 0);
-            break;
-
-         case vkFloating:
-            result = (left->value.dval == right->value.dval);
-            break;
-
-         case vkInteger:
-            result = (left->value.ival == right->value.ival);
-            break;
-
-         default:
-            result = false;
-            error = true;
-            break;
-      }
-
-   } else {
-      result = false;
-   }
-
-   if (error) {
-      printf ("Varient_Same error: left kind: %d, right kind: %d\n",
-              (int) left->kind, (int) right->kind);
-   }
-
-   return result;
-}                               /* Varient_Same */
-
-/*------------------------------------------------------------------------------
- */
-bool Varient_Le (const Varient_Value * left, const Varient_Value * right)
+bool Variant_Eq (const Variant_Value * left, const Variant_Value * right)
 {
    bool result = false;
    bool error = false;
@@ -400,15 +354,15 @@ bool Varient_Le (const Varient_Value * left, const Varient_Value * right)
             case vkString:
                t = strncmp (left->value.sval, right->value.sval,
                             sizeof (left->value.sval));
-               result = (t <= 0);
+               result = (t == 0);
                break;
 
             case vkFloating:
-               result = (atof (left->value.sval) <= right->value.dval);
+               result = (atof (left->value.sval) == right->value.dval);
                break;
 
             case vkInteger:
-               result = (atol (left->value.sval) <= right->value.ival);
+               result = (atol (left->value.sval) == right->value.ival);
                break;
 
             default:
@@ -424,15 +378,15 @@ bool Varient_Le (const Varient_Value * left, const Varient_Value * right)
                break;
 
             case vkString:
-               result = (left->value.dval <= atof (right->value.sval));
+               result = (left->value.dval == atof (right->value.sval));
                break;
 
             case vkFloating:
-               result = (left->value.dval <= right->value.dval);
+               result = (left->value.dval == right->value.dval);
                break;
 
             case vkInteger:
-               result = (left->value.dval <= (double) right->value.ival);
+               result = (left->value.dval == (double) right->value.ival);
                break;
 
             default:
@@ -448,15 +402,15 @@ bool Varient_Le (const Varient_Value * left, const Varient_Value * right)
                break;
 
             case vkString:
-               result = (left->value.ival <= atol (right->value.sval));
+               result = (left->value.ival == atol (right->value.sval));
                break;
 
             case vkFloating:
-               result = ((double) left->value.ival <= right->value.dval);
+               result = ((double) left->value.ival == right->value.dval);
                break;
 
             case vkInteger:
-               result = (left->value.ival <= right->value.ival);
+               result = (left->value.ival == right->value.ival);
                break;
 
             default:
@@ -472,16 +426,146 @@ bool Varient_Le (const Varient_Value * left, const Varient_Value * right)
    }
 
    if (error) {
-      printf ("Varient_Le error: left kind: %d, right kind: %d\n",
+      printf ("Variant_Lq error: left kind: %d, right kind: %d\n",
               (int) left->kind, (int) right->kind);
    }
 
    return result;
-}                               /* Varient_Le */
+}                               /* Variant_Eq */
 
 /*------------------------------------------------------------------------------
  */
-int Varient_Image (char *str, size_t size, const Varient_Value * item)
+bool Variant_Lt (const Variant_Value * left, const Variant_Value * right)
+{
+   bool result = false;
+   bool error = false;
+   int t;
+
+   switch (left->kind) {
+      case vkVoid:
+         error = true;
+         break;
+
+      case vkString:
+         switch (right->kind) {
+            case vkVoid:
+               error = true;
+               break;
+
+            case vkString:
+               t = strncmp (left->value.sval, right->value.sval,
+                            sizeof (left->value.sval));
+               result = (t < 0);
+               break;
+
+            case vkFloating:
+               result = (atof (left->value.sval) < right->value.dval);
+               break;
+
+            case vkInteger:
+               result = (atol (left->value.sval) < right->value.ival);
+               break;
+
+            default:
+               error = true;
+               break;
+         }
+         break;
+
+      case vkFloating:
+         switch (right->kind) {
+            case vkVoid:
+               error = true;
+               break;
+
+            case vkString:
+               result = (left->value.dval < atof (right->value.sval));
+               break;
+
+            case vkFloating:
+               result = (left->value.dval < right->value.dval);
+               break;
+
+            case vkInteger:
+               result = (left->value.dval < (double) right->value.ival);
+               break;
+
+            default:
+               error = true;
+               break;
+         }
+         break;
+
+      case vkInteger:
+         switch (right->kind) {
+            case vkVoid:
+               error = true;
+               break;
+
+            case vkString:
+               result = (left->value.ival < atol (right->value.sval));
+               break;
+
+            case vkFloating:
+               result = ((double) left->value.ival < right->value.dval);
+               break;
+
+            case vkInteger:
+               result = (left->value.ival < right->value.ival);
+               break;
+
+            default:
+               error = true;
+               break;
+         }
+         break;
+
+
+      default:
+         error = true;
+         break;
+   }
+
+   if (error) {
+      printf ("Variant_Lt error: left kind: %d, right kind: %d\n",
+              (int) left->kind, (int) right->kind);
+   }
+
+   return result;
+}                               /* Variant_Lt */
+
+/*------------------------------------------------------------------------------
+ * Define all others interms of < and =
+ */
+bool Variant_Ne (const Variant_Value* left, const Variant_Value * right)
+{
+   return !Variant_Eq (left, right);
+}
+
+/*------------------------------------------------------------------------------
+ */
+bool Variant_Gt (const Variant_Value* left, const Variant_Value * right)
+{
+   return Variant_Lt (right, left);
+}
+
+/*------------------------------------------------------------------------------
+ */
+bool Variant_Le (const Variant_Value* left, const Variant_Value * right)
+{
+   return Variant_Lt (left, right) || Variant_Eq (left, right);
+}
+
+/*------------------------------------------------------------------------------
+ */
+bool Variant_Ge (const Variant_Value* left, const Variant_Value * right)
+{
+   return ! Variant_Lt (left, right);
+}
+
+/*------------------------------------------------------------------------------
+ */
+int Variant_Image (char *str, size_t size, const Variant_Value * item)
 {
    int result;
    double temp;

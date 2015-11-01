@@ -1,13 +1,13 @@
 /* $File: //depot/sw/epics/kryten/information.c $
- * $Revision: #13 $
- * $DateTime: 2013/02/03 17:35:29 $
+ * $Revision: #15 $
+ * $DateTime: 2015/11/01 15:48:18 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011-2013  Andrew C. Starritt
+ * Copyright (C) 2011-2015  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,9 +48,9 @@ void Version ()
 
 /*------------------------------------------------------------------------------
  */
-void Usage ()
+void usage ()
 {
-   printf ("usage: kryten  [OPTIONS]  configuration-file\n"     /* */
+   printf ("usage: kryten  [OPTIONS]  [configuration-file]\n"     /* */
            "       kryten  --help | -h\n"       /* */
            "       kryten  --version | -V\n" /* */
            "       kryten  --licence | -l\n"    /* */
@@ -74,6 +74,10 @@ static const char *help_text =
     "\n"
     "--daemon, -d\n"
     "    Run program as system daemon.\n"
+    "\n"
+    "--monitor, -m  configuration\n"
+      "    Use specified string configuration to define required PVs instread of a \n"
+      "    file. Within string, use ';' as specification separator.\n"
     "\n"
     "--suppress, -s\n"
     "    Suppress copyright preamble when program starts.\n"
@@ -110,7 +114,10 @@ static const char *help_text =
     "literally.\n"
     "\n"
     "<line> ::=\n"
-    "    '#' {any text} | <channel-spec> | <null>\n"
+    "    '#' {any text} | <channel-spec-list> | <null>\n"
+    "\n"
+    "<channel-spec-list> ::=\n"
+    "    <channel-spec> | <channel-spec> ';' <channel-spec-list>\n"
     "\n"
     "<channel-spec> ::=\n"
     "    <pv-name> <element-index> <match-list> <command>\n"
@@ -134,7 +141,10 @@ static const char *help_text =
     "    {unquoted-string} | '\"'{any text}'\"'\n"
     "\n"
     "<command> ::=\n"
-    "    <simple-command> | <elaborate-command>\n"
+    "    <simple-command> | <elaborate-command> | <builtin-command>\n"
+    "\n"
+    "<builtin-command> ::=\n"
+    "    'quit' | 'quit' {integer}\n"
     "\n"
     "<simple-command> ::=\n"
     "    {basic command, no parameters}\n"
@@ -184,6 +194,9 @@ static const char *help_text =
     "\n"
     "Match List\n"
     "Upto 16 match items may be specified.\n"
+    "\n"
+    "Build in quit command"
+    "Cause kryten to terminate, with speficied exit code if given otherwise 0\n"
     "\n"
     "Format Converson Parameters\n"
     "%%p, %%e, %%m, and %%v are format conversion parameters that are expanded\n"
@@ -273,7 +286,7 @@ void Help ()
    printf ("\n");
    printf (intro_text, green, reset);
    printf ("\n");
-   Usage ();
+   usage ();
    printf ("\n");
    printf (help_text, yellow, reset);
    printf (smiley_text, green, reset, red, reset);

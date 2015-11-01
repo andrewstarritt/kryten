@@ -1,6 +1,6 @@
 /* $File: //depot/sw/epics/kryten/kryten.c $
- * $Revision: #18 $
- * $DateTime: 2013/02/13 00:43:42 $
+ * $Revision: #19 $
+ * $DateTime: 2015/11/01 15:48:18 $
  * Last checked in by: $Author: andrew $
  *
  * Description:
@@ -30,6 +30,7 @@
  * indent options:  -kr -pcs -i3 -cli3 -nbbo -nut
  *
  */
+
 #include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -55,7 +56,8 @@ extern int daemon (int nochdir, int noclose);
  * Visible to all units
  */
 bool is_verbose = false;
-
+bool quit_invoked = false;
+int exit_code = 0;
 
 /*------------------------------------------------------------------------------
  */
@@ -72,10 +74,14 @@ static void Signal_Catcher (int sig)
 
       case SIGINT:
          sig_int_received = true;
+         exit_code = 128 + sig;
+         printf ("\nSIGINT received - initiating orderly shutdown.\n");
          break;
 
       case SIGTERM:
          sig_term_received = true;
+         exit_code = 128 + sig;
+         printf ("\nSIGTERM received - initiating orderly shutdown.\n");
          break;
    }
 }                               /* Signal_Catcher */
@@ -87,44 +93,16 @@ static void Signal_Catcher (int sig)
  */
 static bool Shut_Down_Is_Required ()
 {
-   if (sig_int_received) {
-       printf ("\nSIGINT received - initiating orderly shutdown.\n");
-       return true;
-   }
-
-   if (sig_term_received) {
-      printf ("\nSIGTERM received - initiating orderly shutdown.\n");
-      return true;
-   }
-
-   return false;
+   return (sig_int_received || sig_term_received || quit_invoked);
 }                               /* Shut_Down_Is_Required */
 
 
 /*------------------------------------------------------------------------------
  * Main functionality
  */
-static bool Run (const char *config_filename,
-                 const bool just_check_config_file, const bool is_daemon)
+static bool Run (const bool just_check_config_file, const bool is_daemon)
 {
    bool status;
-   int number;
-
-   /* Read configuration file to get list of required PVs
-    * and create a list of PV clients.
-    */
-   status = Create_PV_Client_List (config_filename, &number);
-   if (!status) {
-      printf ("%sError%s : PV client list creation failed\n", red, reset);
-      return false;
-   }
-
-   if (number == 0) {
-      printf
-          ("PV client list is %sempty%s - initialing an early shutdown.\n",
-           yellow, reset);
-      return true;
-   }
 
    if (is_verbose) {
       printf ("Channels/match criteria...\n");
@@ -166,14 +144,14 @@ int main (int argc, char *argv[])
 {
    sighandler_t old_handler;
    bool status;
-   const char *config_filename;
-   bool found_config;
+   const char *config_filename = "";
+   const char* string_config = NULL;
    bool is_daemon;
    bool is_suppress;
    bool is_just_check;
-   bool is_okay;
+   bool is_command_line_config;
 
-   /* Check for special options proir to main processing.
+   /* Check for special options prior to main processing.
     */
    if (argc >= 2) {
 
@@ -197,7 +175,7 @@ int main (int argc, char *argv[])
          return 0;
       }
 
-      if (is_either (argv[1], "--version", "-V")) {
+      if (strcmp (argv[1], "--version") == 0) {
          Version ();
          return 0;
       }
@@ -209,18 +187,20 @@ int main (int argc, char *argv[])
    is_verbose = false;
    is_daemon = false;
    is_just_check = false;
-   found_config = false;
+   is_command_line_config = false;
 
    while ((argc >= 2) && (argv[1][0] == '-')) {
-      /* Hypothesize unknown option
-       */
-      is_okay = false;
-
-      check_flag (argv[1], "--suppress", "-s", &is_okay, &is_suppress);
-      check_flag (argv[1], "--verbose", "-v", &is_okay, &is_verbose);
-      check_flag (argv[1], "--daemon", "-d", &is_okay, &is_daemon);
-      check_flag (argv[1], "--check", "-c", &is_okay, &is_just_check);
-      if (!is_okay) {
+      if      (check_flag (argv[1], "--suppress", "-s", &is_suppress)) { }
+      else if (check_flag (argv[1], "--verbose", "-v", &is_verbose)) { }
+      else if (check_flag (argv[1], "--daemon", "-d", &is_daemon)) { }
+      else if (check_flag (argv[1], "--check", "-c", &is_just_check)) { }
+      else if (check_argument (argv[1], argv[2], "--monitor", "-m",
+                               &is_command_line_config, &string_config))
+      {
+         /* skip option parameter */
+         argc--;
+         argv++;
+      } else {
          printf ("%swarning%s unknown option '%s'  ignored.\n",
                  yellow, reset, argv[1]);
       }
@@ -230,14 +210,18 @@ int main (int argc, char *argv[])
       argv++;
    }
 
-   /* Check for one and only parameter.
+   /* If not inline, check for one and only parameter.
     */
-   if ((argc < 2) || (strlen (argv[1]) == 0)) {
-      printf ("missing/null configuration file parameter\n");
-      Usage ();
-      return 1;
+   if (!is_command_line_config) {
+      if ((argc < 2) || (strlen (argv[1]) == 0)) {
+         printf ("missing/null configuration file parameter\n");
+         usage ();
+         return 1;
+      }
+      config_filename = argv[1];
+   } else {
+      config_filename = "";
    }
-   config_filename = argv[1];
 
 
    /* Ready to go
@@ -256,17 +240,39 @@ int main (int argc, char *argv[])
               yellow, reset, argc - 2);
    }
 
+   /* Read configuration file / string to get list of required PVs
+    * and create a list of PV clients.
+    */
+   int number = 0;
+   if (is_command_line_config) {
+      status = Create_PV_Client_List_From_String (string_config, strlen (string_config), &number);
+    } else {
+      status = Create_PV_Client_List_From_File (config_filename, &number);
+   }
+
+   if (!status) {
+      printf ("%sError%s : PV client list creation failed\n", red, reset);
+      return 1;
+   }
+
+   if (number == 0) {
+      printf ("PV client list is %sempty%s - initialing an early shutdown.\n",
+              yellow, reset);
+      return 0;
+   }
+
+
    /* Just about to start for real - set up sig term handler.
     */
    old_handler = signal (SIGTERM, Signal_Catcher);
    old_handler = signal (SIGINT, Signal_Catcher);
 
-   status = Run (config_filename, is_just_check, is_daemon);
+   status = Run (is_just_check, is_daemon);
    if (status) {
       printf ("%skryten%s complete\n", green, reset);
    }
 
-   return status ? 0 : 1;
+   return status ? exit_code : 1;
 }                               /* main */
 
 /* end */

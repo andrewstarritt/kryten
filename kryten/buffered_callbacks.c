@@ -1,31 +1,31 @@
 /* $File: //depot/sw/epics/common/buffered_callbacks.c $
- * $Revision: #1 $
- * $DateTime: 2014/05/11 10:47:28 $
+ * $Revision: #3 $
+ * $DateTime: 2015/11/01 14:23:04 $
  * Last checked in by: $Author: andrew $
  *
  * EPICS buffered callback module for use with Ada, Lazarus and other
  * runtime environments which don't like alien threads.
  *
- * Copyright (C) 2005-2013  Andrew C. Starritt
+ * Copyright (C) 2005-2015  Andrew C. Starritt
  *
- * This library is free software: you can redistribute it and/or modify
+ * This module is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This module is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this module.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Contact details:
  * starritt@netspace.net.au
  * PO Box 3118, Prahran East, Victoria 3181, Australia.
  *
- *
+ * ---------------------------------------------------------------------------
  * Description:
  * The module buffers the channel access callbacks.
  * The registered callback handlers store a copy of the call back data.
@@ -148,6 +148,7 @@ static void free_element (Callback_Items * pci)
       case PRINTF:
          if (pci->formatted_text) {
             free (pci->formatted_text);
+            pci->formatted_text = NULL;
          }
          break;
 
@@ -356,5 +357,20 @@ int process_buffered_callbacks (const int max)
 
    return n;
 }                               /* process_buffered_callbacks */
+
+
+/*------------------------------------------------------------------------------
+ * Discard all outstanding callbacks - called from application thread.
+ */
+void clear_all_buffered_callbacks ()
+{
+   Callback_Items *pci;
+
+   pci = unload_element ();      /* Get first if it exists */
+   while (pci != NULL) {
+      free_element (pci);        /* Free element */
+      pci = unload_element ();   /* Get next if exists */
+   }
+}
 
 /* end */
