@@ -210,6 +210,7 @@ static const char *help_text =
     "Configuration file example (in yellow)\n"
     "%s\n"
     "# This is a comment within an example kryten configuration file. \n"
+    "#\n"
     "# Monitor beam current and invoke xmessage if current drops below 5mA or \n"
     "# exceeds 205 mA or when the current enters the range 5mA to 205 mA \n"
     "# Note: we assume the beam current never ever < -1.0e9 or > +1.0e9\n"

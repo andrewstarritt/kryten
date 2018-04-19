@@ -28,7 +28,6 @@ include $(TOP)/configure/CONFIG
 DIRS += configure
 DIRS += $(wildcard *Sup)
 DIRS += $(wildcard *App)
-DIRS += $(wildcard documentation)
 
 # The build order is controlled by these dependency rules:
 
