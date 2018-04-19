@@ -160,8 +160,8 @@ static void Subscribe_Channel (CA_Client * pClient)
       truncated = pClient->element_index;
 
       printf
-          ("%s array get/subscription truncated from %lu to %lu elements\n",
-           pClient->pv_name, count, truncated);
+          ("%s array get/subscription truncated from %lu (size %lu) to %lu elements\n",
+           pClient->pv_name, count, size, truncated);
 
       count = truncated;
    }
@@ -878,7 +878,6 @@ bool Process_Clients (Bool_Function_Handle shut_down)
 
    bool connection_timouts_are_done;
    int status;
-   int p;
 /*
    static long last_time;
    static long this_time;
@@ -920,7 +919,8 @@ bool Process_Clients (Bool_Function_Handle shut_down)
       if (status != ECA_NORMAL) {
          printf ("ca_flush_io failed (%s)\n", ca_message (status));
       }
-      p = process_buffered_callbacks (maximum);
+
+      process_buffered_callbacks (maximum);
 
       /* Allow channels 2 seconds to connect before we test for
        * connection timeouts.

@@ -175,7 +175,7 @@ int main (int argc, char *argv[])
          return 0;
       }
 
-      if (strcmp (argv[1], "--version") == 0) {
+      if (is_either (argv[1], "--version", "-V")) {
          Version ();
          return 0;
       }

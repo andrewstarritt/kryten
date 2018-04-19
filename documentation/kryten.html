@@ -23,10 +23,10 @@
 
 <h2>1 Introduction</h2>
 
-<logo>kryten</logo> is a command line EPICS Channel Access client (extention) that allows
+<logo>kryten</logo> is a command line EPICS Channel Access client that allows
 an arbitary set of Process Variables&nbsp;(PVs) to be monitored;
-and for each of these channels if the monitored value starts to match or ceases to match
-a user specified criteria, it then invokes a user specified system command.
+and for each of these channels if the monitored value starts to match or ceases to
+match a user specified criteria, it then invokes a user specified system command.
 
 <h2>2 License</h2>
 
@@ -192,8 +192,9 @@ identical.
 <h3>6.2 Match List</h3>
 Upto 16 match items may be specified.
 
-<h3>6.3 Build in quit command</h3>
-Causes <logo>kryten</logo> to terminate, with specified exit code if given otherwise with exit code 0.
+<h3>6.3 Build in commands</h3>
+quit - this causes <logo>kryten</logo> to terminate, with specified exit code if
+given otherwise with exit code 0.
 
 <h3>6.4 Format Converson Parameters</h3>
 %p, %e, %m, and %v are format conversion parameters that are expanded prior
