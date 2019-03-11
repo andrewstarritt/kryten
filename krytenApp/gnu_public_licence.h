@@ -3,7 +3,7 @@
  * $DateTime: 2012/02/04 09:44:25 $
  * Last checked in by: $Author: andrew $
  *
- * Copyright (C) 2011  Andrew C. Starritt
+ * Copyright (C) 2011-2019  Andrew C. Starritt
  * See kryten.c for details.
  *
  */

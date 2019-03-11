@@ -1,7 +1,7 @@
 # Kryten is a EPICS PV monitoring program that calls a system command
 # when the value of the PV matches/cease to match specified criteria.
 #
-# Copyright (C) 2011-2018  Andrew C. Starritt
+# Copyright (C) 2011-2019  Andrew C. Starritt
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Contact details:
-# starritt@netspace.net.au
+# andrew.starritt@gmail.com
 # PO Box 3118, Prahran East, Victoria 3181, Australia.
 #
 
