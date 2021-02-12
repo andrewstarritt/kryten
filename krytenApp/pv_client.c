@@ -7,7 +7,7 @@
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011-2019  Andrew C. Starritt
+ * Copyright (C) 2011-2021  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -182,7 +182,7 @@ static void Subscribe_Channel (CA_Client * pClient)
     */
    status = ca_create_subscription
        (update_type, count, pClient->channel_id,
-        DBE_LOG | DBE_ALARM, buffered_event_handler,
+        DBE_VALUE | DBE_ALARM, buffered_event_handler,
         &Event, &pClient->event_id);
 
    if (status != ECA_NORMAL) {
