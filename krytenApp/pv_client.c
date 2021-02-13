@@ -1,9 +1,5 @@
-/* $File: //depot/sw/epics/kryten/pv_client.c $
- * $Revision: #21 $
- * $DateTime: 2015/11/01 19:16:00 $
- * Last checked in by: $Author: andrew $
- *
- * Description:
+/* pv_client.c $
+ * 
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
@@ -30,6 +26,7 @@
  * indent options:  -kr -pcs -i3 -cli3 -nbbo -nut
  *
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

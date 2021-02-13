@@ -1,12 +1,9 @@
-/* $File: //depot/sw/epics/common/buffered_callbacks.c $
- * $Revision: #3 $
- * $DateTime: 2015/11/01 14:23:04 $
- * Last checked in by: $Author: andrew $
+/* buffered_callbacks.c
  *
  * EPICS buffered callback module for use with Ada, Lazarus and other
  * runtime environments which don't like alien threads.
  *
- * Copyright (C) 2005-2019  Andrew C. Starritt
+ * Copyright (C) 2005-2021  Andrew C. Starritt
  *
  * This module is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

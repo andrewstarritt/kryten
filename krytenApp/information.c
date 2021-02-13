@@ -1,13 +1,9 @@
-/* $File: //depot/sw/epics/kryten/information.c $
- * $Revision: #15 $
- * $DateTime: 2015/11/01 15:48:18 $
- * Last checked in by: $Author: andrew $
+/* information.c
  *
- * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011-2019  Andrew C. Starritt
+ * Copyright (C) 2011-2021  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -297,7 +293,7 @@ void Help ()
 /*------------------------------------------------------------------------------
  */
 static const char *preamble_text =
-    "%skryten%s  Copyright (C) 2011-2014 Andrew C. Starritt\n"
+    "%skryten%s  Copyright (C) 2011-2021  Andrew C. Starritt\n"
     "This program comes with ABSOLUTELY NO WARRANTY, for details run 'kryten --warranty'.\n"
     "This is free software, and you are welcome to redistribute it under certain conditions,\n"
     "run 'kryten --redistribute' for details. Use option -s to suppress this message.\n\n";

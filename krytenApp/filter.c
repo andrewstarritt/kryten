@@ -1,13 +1,9 @@
-/* $File: //depot/sw/epics/kryten/filter.c $
- * $Revision: #16 $
- * $DateTime: 2015/11/01 20:49:15 $
- * Last checked in by: $Author: andrew $
+/* $File: filter.c
  *
- * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011-2019  Andrew C. Starritt
+ * Copyright (C) 2011-2021  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

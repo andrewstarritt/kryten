@@ -1,13 +1,9 @@
-/* $File: //depot/sw/epics/kryten/gnu_public_licence.c $
- * $Revision: #6 $
- * $DateTime: 2015/11/01 15:48:18 $
- * Last checked in by: $Author: andrew $
+/* gnu_public_licence.c
  *
- * Description:
  * Kryten is a EPICS PV monitoring program that calls a system command
  * when the value of the PV matches/cease to match specified criteria.
  *
- * Copyright (C) 2011-2019  Andrew C. Starritt
+ * Copyright (C) 2011-2021  Andrew C. Starritt
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +26,7 @@
  * indent options:  -kr -pcs -i3 -cli3 -nbbo -nut
  *
  */
+
 #include <stdio.h>
 
 #include "utilities.h"
@@ -40,7 +37,7 @@
 static const char *licence_text =
     "%skryten%s is distributed under the GNU General Public License version 3.\n"
     "\n"
-    "Copyright (C) 2011-2019  Andrew C. Starritt\n"
+    "Copyright (C) 2011-2021  Andrew C. Starritt\n"
     "\n"
     "This program is free software: you can redistribute it and/or modify\n"
     "it under the terms of the GNU General Public License as published by\n"
